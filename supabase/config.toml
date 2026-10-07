@@ -6,3 +6,6 @@ verify_jwt = false
 
 [functions.firebase-token]
 verify_jwt = false
+
+[functions.create-business]
+verify_jwt = false
