@@ -1,5 +1,6 @@
 package com.westly.nbms.features.auth
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -29,7 +30,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.paint
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -46,12 +51,14 @@ import com.westly.nbms.core.design.nbmsShadow
 @Composable
 fun AuthBackground(
     modifier: Modifier = Modifier,
+    @DrawableRes backgroundRes: Int? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Box(
         modifier
             .fillMaxSize()
             .background(MaterialTheme.nbms.drawerBackground)
+            .authPhoto(backgroundRes)
             .systemBarsPadding()
             .imePadding()
     ) {
@@ -77,6 +84,25 @@ fun AuthBackground(
             }
         }
     }
+}
+
+/**
+ * Draws a full-screen photo behind a screen, with a dark navy layer on top (lighter at the top,
+ * darker at the bottom) so the form and white text stay readable. Does nothing when [res] is null.
+ * Put it before `systemBarsPadding()` so the photo also fills the status and navigation bars.
+ */
+@Composable
+fun Modifier.authPhoto(@DrawableRes res: Int?): Modifier {
+    if (res == null) return this
+    val painter = painterResource(res)
+    val base = MaterialTheme.nbms.drawerBackground
+    return this
+        .paint(painter, contentScale = ContentScale.Crop)
+        .background(
+            Brush.verticalGradient(
+                listOf(base.copy(alpha = 0.40f), base.copy(alpha = 0.65f), base.copy(alpha = 0.85f))
+            )
+        )
 }
 
 /** Logo mark (64dp navy square with a gold "N"), the "NBMS" title and the "Management Portal" subtitle. */

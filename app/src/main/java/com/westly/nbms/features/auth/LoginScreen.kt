@@ -1,5 +1,6 @@
 package com.westly.nbms.features.auth
 
+import com.westly.nbms.R
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -37,7 +38,7 @@ fun LoginScreen(nav: AuthNavigator, vm: LoginViewModel = hiltViewModel()) {
     // This is the start screen: the back button does nothing here.
     BackHandler(enabled = true) { }
 
-    AuthBackground {
+    AuthBackground(backgroundRes = R.drawable.auth_bg_login) {
         AuthBrandHeader()
 
         AuthCard {

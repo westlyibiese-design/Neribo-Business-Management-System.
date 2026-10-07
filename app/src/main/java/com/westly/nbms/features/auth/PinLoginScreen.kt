@@ -1,5 +1,6 @@
 package com.westly.nbms.features.auth
 
+import com.westly.nbms.R
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.keyframes
@@ -80,6 +81,7 @@ fun PinLoginScreen(nav: AuthNavigator, vm: PinLoginViewModel = hiltViewModel()) 
         Modifier
             .fillMaxSize()
             .background(nbms.drawerBackground)
+            .authPhoto(R.drawable.auth_bg_pin)
             .systemBarsPadding()
             .imePadding()
     ) {
