@@ -354,12 +354,13 @@ class SessionManagerImpl @Inject constructor(
     }
 
     private suspend fun fetchFirebaseToken(): TokenResult {
-        val access = supabase.auth.currentAccessTokenOrNull() ?: return TokenResult.Unauthorized
+        if (supabase.auth.currentAccessTokenOrNull() == null) return TokenResult.Unauthorized
         return try {
+            // The Supabase client already sends the signed-in user's access token. Adding a second
+            // Authorization header makes the server see "Not a JWT" and answer 401.
             val response = supabase.functions.invoke(
                 function = "firebase-token",
-                body = JsonObject(emptyMap()),
-                headers = Headers.build { append(HttpHeaders.Authorization, "Bearer $access") }
+                body = JsonObject(emptyMap())
             )
             val text = response.bodyAsText()
             if (response.status.isSuccess()) parseTokenBody(text) else classify(response.status.value, text)
