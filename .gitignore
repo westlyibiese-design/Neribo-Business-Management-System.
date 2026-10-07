@@ -1,0 +1,20 @@
+# Secrets and local config
+google-services.json
+local.properties
+*.jks
+*.keystore
+
+# Build output
+build/
+.gradle/
+captures/
+*.apk
+*.aab
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# Fonts are downloaded by the GitHub Actions build
+app/src/main/res/font/
