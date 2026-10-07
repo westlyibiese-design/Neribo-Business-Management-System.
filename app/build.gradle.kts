@@ -33,14 +33,38 @@ android {
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
     }
 
+    // Permanent signing key. GitHub Actions supplies it through environment variables.
+    // Without them (for example a local build) the app falls back to the debug key.
+    val nbmsKeystorePath: String? = System.getenv("NBMS_KEYSTORE_PATH")
+    val nbmsKeystorePassword: String? = System.getenv("NBMS_KEYSTORE_PASSWORD")
+    val hasNbmsKey = !nbmsKeystorePath.isNullOrBlank() &&
+        !nbmsKeystorePassword.isNullOrBlank() &&
+        file(nbmsKeystorePath).exists()
+
+    signingConfigs {
+        if (hasNbmsKey) {
+            create("nbms") {
+                storeFile = file(nbmsKeystorePath!!)
+                storePassword = nbmsKeystorePassword
+                keyAlias = "nbms"
+                keyPassword = nbmsKeystorePassword
+            }
+        }
+    }
+
     buildTypes {
         debug {
             isMinifyEnabled = false
+            // Same permanent key, so each new build installs over the old one.
+            if (hasNbmsKey) signingConfig = signingConfigs.getByName("nbms")
         }
         release {
             isMinifyEnabled = false
-            // Uses the debug key for now. A real keystore is set up in Phase 36.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (hasNbmsKey) {
+                signingConfigs.getByName("nbms")
+            } else {
+                signingConfigs.getByName("debug")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

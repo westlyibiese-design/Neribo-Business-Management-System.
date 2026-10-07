@@ -76,6 +76,20 @@ jobs:
             || { echo "Playfair download failed. The app will use the system serif font."; rm -f app/src/main/res/font/playfair_display_variable.ttf; }
           ls -la app/src/main/res/font || true
 
+      - name: Set up signing key
+        env:
+          NBMS_KEYSTORE_BASE64: ${{ secrets.NBMS_KEYSTORE_BASE64 }}
+          SECRET_NBMS_KEYSTORE_PASSWORD: ${{ secrets.NBMS_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -n "$NBMS_KEYSTORE_BASE64" ] && [ -n "$SECRET_NBMS_KEYSTORE_PASSWORD" ]; then
+            printf '%s' "$NBMS_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/nbms-release.jks"
+            echo "NBMS_KEYSTORE_PATH=$RUNNER_TEMP/nbms-release.jks" >> "$GITHUB_ENV"
+            echo "NBMS_KEYSTORE_PASSWORD=$SECRET_NBMS_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "Signing with the NBMS key."
+          else
+            echo "No NBMS signing secrets set. Using the debug key."
+          fi
+
       - name: Create Gradle wrapper if missing
         run: |
           if [ ! -f gradlew ] || [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
