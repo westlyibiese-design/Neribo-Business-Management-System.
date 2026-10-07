@@ -12,3 +12,16 @@ verify_jwt = false
 
 [functions.verify-pin]
 verify_jwt = false
+
+# Phase 6: Device Lock. These check the caller themselves (requireMember) and answer {ok:false,error} with 401.
+[functions.device-list]
+verify_jwt = false
+
+[functions.device-pin-set]
+verify_jwt = false
+
+[functions.device-pin-verify]
+verify_jwt = false
+
+[functions.device-revoke]
+verify_jwt = false
