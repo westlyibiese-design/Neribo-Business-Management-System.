@@ -1,0 +1,5 @@
+# NBMS Supabase configuration (used by the Supabase CLI in GitHub Actions)
+project_id = "nbms"
+
+[functions.health]
+verify_jwt = false
