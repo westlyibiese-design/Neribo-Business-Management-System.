@@ -52,18 +52,21 @@ fun GalleryScreen(
     var name by rememberSaveable { mutableStateOf("") }
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
-    var room by remember { mutableStateOf<String?>(null) }
+    var room by rememberSaveable { mutableStateOf<String?>(null) }
     var switchOn by rememberSaveable { mutableStateOf(true) }
     var checked by rememberSaveable { mutableStateOf(true) }
-    var radio by remember { mutableStateOf<String?>("Cash") }
+    var radio by rememberSaveable { mutableStateOf<String?>("Cash") }
     var tab by rememberSaveable { mutableStateOf(0) }
     var search by rememberSaveable { mutableStateOf("") }
     var loadingButton by remember { mutableStateOf(false) }
     var showDialog by remember { mutableStateOf(false) }
     var showConfirm by remember { mutableStateOf(false) }
     var showSheet by remember { mutableStateOf(false) }
-    var date by remember { mutableStateOf<LocalDate?>(null) }
-    var time by remember { mutableStateOf<LocalTime?>(null) }
+    // Dates and times are kept as text so they survive screen rotation.
+    var dateText by rememberSaveable { mutableStateOf<String?>(null) }
+    var timeText by rememberSaveable { mutableStateOf<String?>(null) }
+    val date = dateText?.let { LocalDate.parse(it) }
+    val time = timeText?.let { LocalTime.parse(it) }
 
     val items = remember {
         (1..23).map { SampleItem(it, "Sample booking #$it", "Room ${100 + it} · ₦${45_000 + it * 500}") }
@@ -231,8 +234,8 @@ fun GalleryScreen(
             }
 
             FormSection("Pickers and avatars") {
-                NbmsDatePickerField("Check-in date", date, { date = it })
-                NbmsTimePickerField("Check-in time", time, { time = it })
+                NbmsDatePickerField("Check-in date", date, { dateText = it.toString() })
+                NbmsTimePickerField("Check-in time", time, { timeText = it.toString() })
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Avatar("Westly Ibiese", size = 56.dp)
                     Avatar("Ada Obi")
