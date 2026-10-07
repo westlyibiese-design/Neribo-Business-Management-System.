@@ -56,6 +56,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -86,12 +87,16 @@ fun PinLoginScreen(nav: AuthNavigator, vm: PinLoginViewModel = hiltViewModel()) 
 
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
             val minHeight = maxHeight
+            // Short screens (or the keyboard being open) get a tighter layout so the
+            // whole page fits without scrolling. Scrolling stays as a safety net.
+            val compact = maxHeight < 820.dp
+            val pagePadding = if (compact) 12.dp else 16.dp
             Column(
                 Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(16.dp)
-                    .heightIn(min = minHeight - 32.dp),
+                    .padding(pagePadding)
+                    .heightIn(min = minHeight - pagePadding * 2),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -100,9 +105,9 @@ fun PinLoginScreen(nav: AuthNavigator, vm: PinLoginViewModel = hiltViewModel()) 
                         .widthIn(max = 384.dp)
                         .fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(24.dp)
+                    verticalArrangement = Arrangement.spacedBy(if (compact) 12.dp else 24.dp)
                 ) {
-                    Header()
+                    Header(compact)
 
                     if (state.showCodeField) {
                         BusinessCodeField(
@@ -122,6 +127,7 @@ fun PinLoginScreen(nav: AuthNavigator, vm: PinLoginViewModel = hiltViewModel()) 
                     PinDots(filled = state.pad.pin.length, shakeCount = state.shakeCount)
 
                     Keypad(
+                        compact = compact,
                         canSubmit = state.pad.canSubmit,
                         submitting = submitting,
                         onDigit = vm::onDigit,
@@ -168,22 +174,27 @@ private fun BackLink(onClick: () -> Unit) {
 }
 
 @Composable
-private fun Header() {
+private fun Header(compact: Boolean) {
     val nbms = MaterialTheme.nbms
-    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Box(
-            Modifier
-                .size(40.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(Color(0xFF203A6F))
-                .border(1.dp, nbms.drawerBorder, RoundedCornerShape(10.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("N", style = nbmsBrandSmallStyle().copy(fontSize = 18.sp), color = nbms.drawerPrimary)
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 16.dp)
+    ) {
+        if (!compact) {
+            Box(
+                Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color(0xFF203A6F))
+                    .border(1.dp, nbms.drawerBorder, RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("N", style = nbmsBrandSmallStyle().copy(fontSize = 18.sp), color = nbms.drawerPrimary)
+            }
         }
         Box(
             Modifier
-                .size(64.dp)
+                .size(if (compact) 48.dp else 64.dp)
                 .clip(CircleShape)
                 .background(nbms.drawerPrimary),
             contentAlignment = Alignment.Center
@@ -192,7 +203,7 @@ private fun Header() {
                 NbmsIcons.Key,
                 contentDescription = null,
                 tint = nbms.drawerPrimaryForeground,
-                modifier = Modifier.size(28.dp)
+                modifier = Modifier.size(if (compact) 24.dp else 28.dp)
             )
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -342,6 +353,7 @@ private fun PinDots(filled: Int, shakeCount: Int) {
 
 @Composable
 private fun Keypad(
+    compact: Boolean,
     canSubmit: Boolean,
     submitting: Boolean,
     onDigit: (Char) -> Unit,
@@ -350,18 +362,22 @@ private fun Keypad(
 ) {
     val nbms = MaterialTheme.nbms
     val digitStyle = MaterialTheme.typography.titleLarge.copy(fontSize = 24.sp, fontWeight = FontWeight.Medium)
-    Column(Modifier.width(240.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    val keySize = if (compact) 60.dp else 72.dp
+    Column(
+        Modifier.width(if (compact) 216.dp else 240.dp),
+        verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 12.dp)
+    ) {
         listOf("123", "456", "789").forEach { row ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 row.forEach { d ->
-                    KeyCircle(enabled = !submitting, onClick = { onDigit(d) }) {
+                    KeyCircle(size = keySize, enabled = !submitting, onClick = { onDigit(d) }) {
                         Text(d.toString(), style = digitStyle, color = nbms.drawerForeground)
                     }
                 }
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            KeyCircle(enabled = !submitting, onClick = onDelete) {
+            KeyCircle(size = keySize, enabled = !submitting, onClick = onDelete) {
                 Icon(
                     NbmsIcons.Backspace,
                     contentDescription = "Delete",
@@ -369,23 +385,23 @@ private fun Keypad(
                     modifier = Modifier.size(24.dp)
                 )
             }
-            KeyCircle(enabled = !submitting, onClick = { onDigit('0') }) {
+            KeyCircle(size = keySize, enabled = !submitting, onClick = { onDigit('0') }) {
                 Text("0", style = digitStyle, color = nbms.drawerForeground)
             }
-            OkKey(canSubmit = canSubmit, submitting = submitting, onClick = onSubmit)
+            OkKey(size = keySize, canSubmit = canSubmit, submitting = submitting, onClick = onSubmit)
         }
     }
 }
 
 @Composable
-private fun KeyCircle(enabled: Boolean, onClick: () -> Unit, content: @Composable () -> Unit) {
+private fun KeyCircle(size: Dp, enabled: Boolean, onClick: () -> Unit, content: @Composable () -> Unit) {
     val nbms = MaterialTheme.nbms
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
     val scale by animateFloatAsState(if (pressed) 0.95f else 1f, label = "keyScale")
     Box(
         Modifier
-            .size(72.dp)
+            .size(size)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -404,14 +420,14 @@ private fun KeyCircle(enabled: Boolean, onClick: () -> Unit, content: @Composabl
 }
 
 @Composable
-private fun OkKey(canSubmit: Boolean, submitting: Boolean, onClick: () -> Unit) {
+private fun OkKey(size: Dp, canSubmit: Boolean, submitting: Boolean, onClick: () -> Unit) {
     val nbms = MaterialTheme.nbms
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
     val scale by animateFloatAsState(if (pressed && canSubmit) 0.95f else 1f, label = "okScale")
     Box(
         Modifier
-            .size(72.dp)
+            .size(size)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
