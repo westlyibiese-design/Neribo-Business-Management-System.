@@ -1,0 +1,23 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "businesses": {
+      "$bid": {
+        "roomStatus": {
+          ".read": true,
+          ".write": "auth != null && auth.token.biz === $bid"
+        },
+        "dashboard_counters": {
+          ".read": "auth != null && auth.token.biz === $bid",
+          ".write": "auth != null && auth.token.biz === $bid"
+        },
+        "activity_feed": {
+          ".read": "auth != null && auth.token.biz === $bid",
+          ".write": "auth != null && auth.token.biz === $bid",
+          ".indexOn": "timestamp"
+        }
+      }
+    }
+  }
+}

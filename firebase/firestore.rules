@@ -1,0 +1,338 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /businesses/{bid} {
+
+      // ── helpers ──
+      function isSignedIn() { return request.auth != null; }
+      function inBiz() { return isSignedIn() && request.auth.token.biz == bid; }
+      function userDoc() {
+        let ref = /databases/$(database)/documents/businesses/$(bid)/users/$(request.auth.uid);
+        return exists(ref) ? get(ref).data : null;
+      }
+      function role() { let d = userDoc(); return d != null ? d.role : null; }
+      function isActive() { let d = userDoc(); return d != null && d.status == 'active'; }
+      function hasRole(r) { return inBiz() && isActive() && role() == r; }
+      function isSuperAdmin() { return hasRole('super_admin'); }
+      function isManager() { return hasRole('manager'); }
+      function isReceptionist() { return hasRole('receptionist'); }
+      function isAccountant() { return hasRole('accountant'); }
+      function isStaff() { return hasRole('staff'); }
+      function isWaiter() { return hasRole('waiter'); }
+      function isHousekeeping() { return hasRole('housekeeping'); }
+      function isBarAttendant() { return hasRole('bar_attendant'); }
+      function isLaundryValet() { return hasRole('laundry_valet'); }
+      function isOperationsManager() { return hasRole('operations_manager'); }
+      function isMaintenanceTechnician() { return hasRole('maintenance_technician'); }
+      function isGymStaff() { return hasRole('gym_staff'); }
+      function isAnyAdmin() {
+        return inBiz() && isActive() && role() in ['super_admin','manager','receptionist','accountant','staff','waiter',
+          'housekeeping','bar_attendant','laundry_valet','operations_manager','maintenance_technician',
+          'security_guard','driver','restaurant_attendant','kitchen_staff','gym_staff'];
+      }
+      function isManagement() { return isSuperAdmin() || isManager(); }
+      function isFrontDesk() { return isManagement() || isReceptionist(); }
+      function isFinance() { return isManagement() || isAccountant(); }
+      function isHousekeepingSupervisor() { return isManagement() || isOperationsManager(); }
+      function isBookingsReader() { return isFrontDesk() || isOperationsManager() || isAccountant(); }
+      function isGymSupervisor() { return isManagement() || isOperationsManager(); }
+      function currentRoomAssignee(roomId) {
+        let ref = /databases/$(database)/documents/businesses/$(bid)/room_assignments/$(roomId);
+        return exists(ref) ? get(ref).data.housekeeperId : null;
+      }
+      function ownsHousekeepingTask(t) {
+        return t.assignedTo == request.auth.uid || currentRoomAssignee(t.roomId) == request.auth.uid;
+      }
+      function notSoftDeleting() {
+        return !('isDeleted' in request.resource.data) || request.resource.data.isDeleted == false;
+      }
+
+      // ── public (guest website) validators ──
+      function isValidPublicOrder() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['waiterId','waiterName','customerName','roomNumber','tableNumber','items','total',
+            'paymentMethod','notes','hasManualItems','status','approvalStatus','approvedBy','approvedByName',
+            'approvedAt','rejectedReason','createdAt','isDeleted','source'])
+          && d.source == 'qr_menu'
+          && d.waiterId == 'unassigned'
+          && d.status == 'pending'
+          && d.approvalStatus == 'pending'
+          && d.approvedBy == null
+          && d.approvedByName == null
+          && d.approvedAt == null
+          && d.isDeleted == false
+          && d.items is list
+          && d.items.size() >= 1
+          && d.items.size() <= 40
+          && d.total is number
+          && d.total > 0
+          && d.paymentMethod in ['room_charge','pay_on_delivery']
+          && d.roomNumber == null
+          && d.tableNumber is string
+          && d.tableNumber.size() > 0;
+      }
+      function isValidPublicBooking() {
+        let d = request.resource.data;
+        return d.status == 'pending'
+          && d.source == 'website'
+          && d.guestName is string && d.guestName.size() > 0
+          && d.guestEmail is string && d.guestEmail.size() > 0
+          && d.roomId is string && d.roomId.size() > 0
+          && d.checkIn is timestamp
+          && d.checkOut is timestamp
+          && d.checkOut > d.checkIn
+          && !d.keys().hasAny(['updatedBy','checkedInBy','checkedOutBy']);
+      }
+      function isValidPublicBookingDates() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['roomId','checkIn','checkOut','status'])
+          && d.status == 'pending'
+          && d.roomId is string && d.roomId.size() > 0
+          && d.checkIn is timestamp
+          && d.checkOut is timestamp
+          && d.checkOut > d.checkIn;
+      }
+      function isValidReviewSubmission() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['name','text','rating','status','createdAt'])
+          && d.keys().hasAll(['name','text','status','createdAt'])
+          && d.name is string && d.name.size() >= 1 && d.name.size() <= 80
+          && d.text is string && d.text.size() >= 1 && d.text.size() <= 1000
+          && d.status == 'pending'
+          && (!('rating' in d) || d.rating == null
+              || (d.rating is int && d.rating >= 1 && d.rating <= 5));
+      }
+
+      // ── the business document ──
+      allow get: if true;            // guest site and login need name/code/currency; no list
+      allow list: if false;
+      allow write: if false;         // only Edge Functions (service account) write it
+
+      // ── collections ──
+      match /users/{userId} {          // READ-ONLY MIRROR written by Edge Functions
+        allow get: if inBiz() && (request.auth.uid == userId || isSuperAdmin());
+        allow list: if isManagement() || isReceptionist() || isOperationsManager();
+        allow write: if false;
+      }
+
+      match /rooms/{id} {
+        allow read: if true;
+        allow create: if isSuperAdmin();
+        allow update: if isSuperAdmin()
+          || ((isManagement() || isReceptionist() || isOperationsManager() || isHousekeeping()) && notSoftDeleting());
+        allow delete: if false;
+      }
+
+      match /venues/{id} {
+        allow read: if true;
+        allow create: if isSuperAdmin();
+        allow update: if isSuperAdmin();
+        allow delete: if false;
+      }
+
+      match /bookings/{id} {
+        allow read: if isBookingsReader();
+        allow create: if isFrontDesk() || isValidPublicBooking();
+        allow update: if isFrontDesk();
+        allow delete: if false;
+      }
+
+      match /booking_dates/{id} {
+        allow read: if true;
+        allow create: if isFrontDesk() || isValidPublicBookingDates();
+        allow update: if isAnyAdmin();
+        allow delete: if false;
+      }
+
+      match /guests/{id} {
+        allow read: if isAnyAdmin();
+        allow create: if isFrontDesk();
+        allow update: if isFrontDesk();
+        allow delete: if false;
+      }
+
+      match /checkins/{id} {
+        allow read: if isAnyAdmin();
+        allow create: if isSuperAdmin() || isReceptionist();
+        allow update: if isSuperAdmin();
+        allow delete: if false;
+      }
+
+      match /checkouts/{id} {
+        allow read: if isAnyAdmin();
+        allow create: if isSuperAdmin() || isReceptionist();
+        allow update: if isSuperAdmin();
+        allow delete: if false;
+      }
+
+      match /attendance/{id} {
+        allow read: if isManagement() || isReceptionist() || isOperationsManager();
+        allow create: if isSuperAdmin() || isReceptionist();
+        allow update: if isSuperAdmin() || isReceptionist();
+        allow delete: if false;
+      }
+
+      match /sales/{id} {
+        allow read: if isManagement() || isAccountant()
+          || (isStaff() && resource.data.staffId == request.auth.uid);
+        allow create: if isSuperAdmin() || isStaff();
+        allow update: if isSuperAdmin() || isAccountant();
+        allow delete: if false;
+      }
+
+      match /expenses/{id} {
+        allow read: if isFinance();
+        allow create: if isFinance();
+        allow update: if isFinance();
+        allow delete: if false;
+      }
+
+      match /inventory/{id} {
+        allow read: if isAnyAdmin();
+        allow create: if isFinance();
+        allow update: if isFinance() || isStaff() || isWaiter() || isBarAttendant();
+        allow delete: if isSuperAdmin();
+      }
+
+      match /payments/{id} {
+        allow read: if isFinance() || isReceptionist();
+        allow create: if isSuperAdmin() || isReceptionist();
+        allow update: if isSuperAdmin() || isAccountant();
+        allow delete: if false;
+      }
+
+      match /notifications/{id} {
+        allow read: if isAnyAdmin();
+        allow create: if isAnyAdmin();
+        allow update: if isAnyAdmin();
+        allow delete: if isSuperAdmin();
+      }
+
+      match /audit_logs/{id} {
+        allow read: if isSuperAdmin();
+        allow create: if isAnyAdmin();
+        allow update: if false;
+        allow delete: if false;
+      }
+
+      match /deleted_records/{id} {
+        allow read: if isSuperAdmin();
+        allow create: if isAnyAdmin();
+        allow update: if isSuperAdmin();
+        allow delete: if isSuperAdmin();
+      }
+
+      match /cms_content/{docId} {
+        allow read: if true;
+        allow create, update, delete: if (docId in ['restaurant_menu','bar_menu','gallery','facilities','gym'])
+          ? isManagement() : isSuperAdmin();
+      }
+
+      match /settings/{id} {
+        allow read: if true;
+        allow create: if isSuperAdmin();
+        allow update: if isSuperAdmin();
+        allow delete: if isSuperAdmin();
+      }
+
+      match /reviews/{id} {
+        allow read: if isManagement() || resource.data.status == 'approved';
+        allow create: if isValidReviewSubmission();
+        allow update: if isManagement();
+        allow delete: if isManagement();
+      }
+
+      match /orders/{id} {
+        allow read: if isManagement() || isWaiter() || isAccountant() || isOperationsManager();
+        allow create: if isSuperAdmin() || isWaiter() || isValidPublicOrder();
+        allow update: if isSuperAdmin() || isWaiter() || isManager() || isAccountant();
+        allow delete: if false;
+      }
+
+      match /bar_orders/{id} {
+        allow read: if isManagement() || isBarAttendant() || isAccountant() || isOperationsManager();
+        allow create: if isSuperAdmin() || isBarAttendant();
+        allow update: if isSuperAdmin() || isBarAttendant() || isManager() || isAccountant();
+        allow delete: if false;
+      }
+
+      match /laundry_requests/{id} {
+        allow read: if isManagement() || isLaundryValet() || isAccountant() || isOperationsManager();
+        allow create: if isSuperAdmin() || isLaundryValet();
+        allow update: if isSuperAdmin() || isLaundryValet() || isManager() || isAccountant();
+        allow delete: if false;
+      }
+
+      match /tasks/{id} {
+        allow read: if isManagement() || isOperationsManager()
+          || (isAnyAdmin() && request.auth.uid in resource.data.assignedToIds);
+        allow create: if isSuperAdmin() || isOperationsManager();
+        allow update: if isSuperAdmin() || isOperationsManager() || isManager()
+          || (isAnyAdmin() && request.auth.uid in resource.data.assignedToIds);
+        allow delete: if false;
+      }
+
+      match /shifts/{id} {
+        allow read: if isAnyAdmin();
+        allow create: if isSuperAdmin() || isOperationsManager() || isManager();
+        allow update: if isSuperAdmin() || isOperationsManager() || isManager();
+        allow delete: if false;
+      }
+
+      match /maintenance/{id} {
+        allow read: if isManagement() || isHousekeeping() || isReceptionist()
+          || isOperationsManager() || isMaintenanceTechnician();
+        allow create: if isManagement() || isHousekeeping() || isReceptionist();
+        allow update: if isManagement() || isHousekeeping() || isMaintenanceTechnician();
+        allow delete: if isSuperAdmin();
+      }
+
+      match /housekeeping_tasks/{id} {
+        allow read: if isHousekeepingSupervisor()
+          || (isHousekeeping() && ownsHousekeepingTask(resource.data));
+        allow create: if isSuperAdmin() || isHousekeepingSupervisor() || isHousekeeping();
+        allow update: if isHousekeepingSupervisor()
+          || (isHousekeeping() && ownsHousekeepingTask(resource.data));
+        allow delete: if isSuperAdmin();
+      }
+
+      match /room_assignment_groups/{id} {
+        allow read: if isHousekeepingSupervisor()
+          || (isHousekeeping() && request.auth.uid == resource.data.housekeeperId);
+        allow create: if isHousekeepingSupervisor();
+        allow update: if isHousekeepingSupervisor();
+        allow delete: if false;
+      }
+
+      match /room_assignments/{id} {
+        allow read: if isHousekeepingSupervisor()
+          || (isHousekeeping() && request.auth.uid == resource.data.housekeeperId);
+        allow create: if isHousekeepingSupervisor();
+        allow update: if isHousekeepingSupervisor();
+        allow delete: if isHousekeepingSupervisor();
+      }
+
+      match /lost_found/{id} {
+        allow read: if isManagement() || isHousekeeping();
+        allow create: if isManagement() || isHousekeeping();
+        allow update: if isManagement();
+        allow delete: if isSuperAdmin();
+      }
+
+      match /gym_members/{id} {
+        allow read: if isGymSupervisor() || isGymStaff();
+        allow create: if isGymSupervisor() || isGymStaff();
+        allow update: if isGymSupervisor() || isGymStaff();
+        allow delete: if false;
+      }
+
+      match /gym_attendance/{id} {
+        allow read: if isGymSupervisor() || isGymStaff();
+        allow create: if isGymSupervisor() || isGymStaff();
+        allow update: if isGymSupervisor() || isGymStaff();
+        allow delete: if false;
+      }
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}
