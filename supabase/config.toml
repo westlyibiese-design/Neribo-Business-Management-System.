@@ -3,3 +3,6 @@ project_id = "nbms"
 
 [functions.health]
 verify_jwt = false
+
+[functions.firebase-token]
+verify_jwt = false
