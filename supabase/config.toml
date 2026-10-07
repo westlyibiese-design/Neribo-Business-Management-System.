@@ -9,3 +9,6 @@ verify_jwt = false
 
 [functions.create-business]
 verify_jwt = false
+
+[functions.verify-pin]
+verify_jwt = false
