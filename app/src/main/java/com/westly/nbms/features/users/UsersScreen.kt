@@ -41,11 +41,11 @@ import com.westly.nbms.core.rbac.Role
 import com.westly.nbms.core.rbac.isPinEligible
 import com.westly.nbms.core.session.SessionState
 import com.westly.nbms.core.util.Format
-import com.westly.nbms.core.util.toInstant
 import com.westly.nbms.features.users.models.StaffUser
 import com.westly.nbms.features.users.models.isActive
 import com.westly.nbms.features.users.models.roleLabel
 import com.westly.nbms.features.users.models.roleOrNull
+import kotlinx.datetime.Instant
 
 private val TABLET_WIDTH = 600.dp
 
@@ -313,7 +313,7 @@ private fun PinBadge(user: StaffUser) {
 }
 
 private fun lastLoginText(user: StaffUser): String =
-    user.lastLogin?.let { Format.date(it.toInstant()) } ?: "Never"
+    user.lastLogin?.let { Format.date(Instant.fromEpochSeconds(it.seconds, it.nanoseconds)) } ?: "Never"
 
 /** Reset password, Reset PIN (PIN roles only) and Suspend / Restore. Disabled with a spinner while the call runs. */
 @Composable
