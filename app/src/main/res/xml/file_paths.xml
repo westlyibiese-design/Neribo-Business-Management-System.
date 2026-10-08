@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Files the app shares through the Android share sheet (for example the audit log CSV).
+     They are written to the cache folder "exports/" and can be cleared by Android at any time. -->
+<paths>
+    <cache-path name="exports" path="exports/" />
+</paths>
