@@ -43,6 +43,7 @@ import com.westly.nbms.core.feature.AuthScreenSpec
 import com.westly.nbms.core.feature.DashboardProvider
 import com.westly.nbms.core.feature.NbmsFeature
 import com.westly.nbms.core.feature.ShellOverlay
+import com.westly.nbms.core.feature.TopBarAction
 import com.westly.nbms.core.session.SessionManager
 import com.westly.nbms.core.session.SessionState
 import com.westly.nbms.shell.StaffShell
@@ -57,6 +58,7 @@ class RootViewModel @Inject constructor(
     val features: Set<@JvmSuppressWildcards NbmsFeature>,
     val dashboards: Set<@JvmSuppressWildcards DashboardProvider>,
     val overlays: Set<@JvmSuppressWildcards ShellOverlay>,
+    val topBarActions: Set<@JvmSuppressWildcards TopBarAction>,
     val toast: ToastController
 ) : ViewModel() {
 
@@ -85,7 +87,8 @@ fun NbmsRoot(vm: RootViewModel = hiltViewModel()) {
                 session = s,
                 features = vm.features,
                 dashboards = vm.dashboards,
-                overlays = vm.overlays
+                overlays = vm.overlays,
+                topBarActions = vm.topBarActions
             )
         }
         NbmsSnackbarHost(controller = vm.toast)
