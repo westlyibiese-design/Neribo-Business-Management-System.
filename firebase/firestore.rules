@@ -106,7 +106,13 @@ service cloud.firestore {
       // ── the business document ──
       allow get: if true;            // guest site and login need name/code/currency; no list
       allow list: if false;
-      allow write: if false;         // only Edge Functions (service account) write it
+      allow create, delete: if false; // only Edge Functions (service account) create or remove it
+      // Phase 9: the Super Admin may switch maintenance mode. Only these two fields can change from the app;
+      // everything else on this document is written by Edge Functions.
+      allow update: if isSuperAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['maintenanceMode', 'maintenanceMessage'])
+        && request.resource.data.maintenanceMode is bool
+        && (request.resource.data.maintenanceMessage == null || request.resource.data.maintenanceMessage is string);
 
       // ── collections ──
       match /users/{userId} {          // READ-ONLY MIRROR written by Edge Functions
@@ -331,6 +337,13 @@ service cloud.firestore {
         allow create: if isGymSupervisor() || isGymStaff();
         allow update: if isGymSupervisor() || isGymStaff();
         allow delete: if false;
+      }
+
+      // Phase 9 (Deleted Records, Purge): the Super Admin may permanently delete a record that was already soft-deleted.
+      match /{coll}/{id} {
+        allow delete: if isSuperAdmin()
+          && coll in ['rooms','venues','bookings','guests','sales','expenses','inventory','attendance','maintenance','housekeeping_tasks']
+          && resource.data.isDeleted == true;
       }
     }
     match /{document=**} { allow read, write: if false; }
