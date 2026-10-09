@@ -5,7 +5,6 @@ import com.google.firebase.Timestamp
 import com.westly.nbms.core.data.BusinessFirestore
 import com.westly.nbms.core.data.BusinessRealtime
 import com.westly.nbms.core.design.BadgeTone
-import com.westly.nbms.core.util.toInstant
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeoutOrNull
@@ -61,8 +60,8 @@ class FirestoreRoomLogicStore @Inject constructor(
             BookingLock(
                 id = d.id,
                 roomId = d.getString("roomId") ?: roomId,
-                checkIn = d.getTimestamp("checkIn").toInstant(),
-                checkOut = d.getTimestamp("checkOut").toInstant(),
+                checkIn = d.getTimestamp("checkIn").asInstant(),
+                checkOut = d.getTimestamp("checkOut").asInstant(),
                 status = d.getString("status").orEmpty()
             )
         }
@@ -86,6 +85,9 @@ class FirestoreRoomLogicStore @Inject constructor(
         realtime.update("roomStatus/$roomId", fields)
     }
 }
+
+/** Not named toInstant: Timestamp has its own toInstant() (java.time) that would win over an extension. */
+private fun Timestamp?.asInstant(): Instant? = this?.let { Instant.fromEpochSeconds(it.seconds, it.nanoseconds.toLong()) }
 
 private fun Instant.toTimestamp(): Timestamp = Timestamp(epochSeconds, nanosecondsOfSecond)
 

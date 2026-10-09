@@ -83,18 +83,18 @@ fun UsersScreen(
                 }
             } else {
                 PageHeader(title = "Users", subtitle = subtitle)
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     NbmsButton(
                         text = "Roles & Permissions",
                         onClick = vm::openRoles,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                         variant = ButtonVariant.Outline,
                         leadingIcon = NbmsIcons.Shield
                     )
                     NbmsButton(
                         text = "Add User",
                         onClick = { showCreate = true },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                         leadingIcon = NbmsIcons.Plus
                     )
                 }

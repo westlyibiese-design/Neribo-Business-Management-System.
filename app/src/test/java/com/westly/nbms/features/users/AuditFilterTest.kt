@@ -107,4 +107,11 @@ class AuditFilterTest {
         assertEquals(AuditTone.MUTED, toneForAction("roles_updated"))
         assertEquals(AuditTone.MUTED, toneForAction(""))
     }
+
+    @Test
+    fun entryCountTextUsesSingularForOne() {
+        assertEquals("0 entries", entryCountText(0))
+        assertEquals("1 entry", entryCountText(1))
+        assertEquals("2 entries", entryCountText(2))
+    }
 }

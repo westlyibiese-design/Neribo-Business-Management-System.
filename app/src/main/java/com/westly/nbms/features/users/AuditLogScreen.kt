@@ -82,7 +82,7 @@ fun AuditLogScreen(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Icon(NbmsIcons.Shield, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
                 if (wide) {
-                    PageHeader(title = "Audit Log", subtitle = "${filtered.size} entries", modifier = Modifier.weight(1f)) {
+                    PageHeader(title = "Audit Log", subtitle = entryCountText(filtered.size), modifier = Modifier.weight(1f)) {
                         NbmsButton(
                             text = "Export CSV",
                             onClick = export,
@@ -92,7 +92,7 @@ fun AuditLogScreen(
                         )
                     }
                 } else {
-                    PageHeader(title = "Audit Log", subtitle = "${filtered.size} entries", modifier = Modifier.weight(1f))
+                    PageHeader(title = "Audit Log", subtitle = entryCountText(filtered.size), modifier = Modifier.weight(1f))
                 }
             }
             if (!wide) {

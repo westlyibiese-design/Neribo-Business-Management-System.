@@ -89,7 +89,7 @@ fun severityColor(severity: String?): Color = Color(severityColorArgb(severity))
 
 /** "5m ago". A notification with no server time yet was just written, so it says "just now". */
 fun timeAgo(createdAt: Timestamp?, now: Instant = Clock.System.now()): String =
-    createdAt?.let { Format.relative(it.toInstant(), now) } ?: "just now"
+    createdAt?.let { Format.relative(Instant.fromEpochSeconds(it.seconds, it.nanoseconds.toLong()), now) } ?: "just now"
 
 /** The red badge text: the number, or "99+" above 99. */
 fun badgeLabel(count: Int): String = if (count > 99) "99+" else count.toString()

@@ -28,6 +28,9 @@ import javax.inject.Inject
 
 internal const val AUDIT_PAGE_LIMIT = 200
 
+/** "1 entry", "0 entries", "5 entries". */
+internal fun entryCountText(count: Int): String = if (count == 1) "1 entry" else "$count entries"
+
 /** Newest first. Entries the server has not stamped yet go last. */
 internal fun sortNewestFirst(
     entries: List<AuditLogEntry>,
