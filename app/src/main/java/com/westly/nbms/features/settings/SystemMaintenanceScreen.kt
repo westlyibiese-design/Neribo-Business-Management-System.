@@ -100,7 +100,7 @@ private fun StatusCard(saved: MaintenanceSettings?) {
     val active = target != MaintenanceTarget.NONE
     val statusColor = if (active) nbms.onWarningContainer else nbms.success
     val changedBy = saved?.updatedByName?.takeIf { it.isNotBlank() }
-    val changedAt = saved?.updatedAt?.toInstant()
+    val changedAt = saved?.updatedAt.toInstant()
 
     NbmsCard(Modifier.fillMaxWidth()) {
         Row(
