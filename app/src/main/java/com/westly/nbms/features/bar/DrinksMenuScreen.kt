@@ -59,7 +59,7 @@ import com.westly.nbms.core.util.Format
 /** The Drinks Menu page (`bar-menu`): add, edit, switch availability and delete bar drinks. */
 @Composable
 fun DrinksMenuScreen(session: SessionState.SignedIn) {
-    val vm: DrinksDrinksViewModel = hiltViewModel()
+    val vm: DrinksMenuViewModel = hiltViewModel()
     val view by vm.view.collectAsStateWithLifecycle()
     val saving by vm.saving.collectAsStateWithLifecycle()
     val busyIds by vm.busyIds.collectAsStateWithLifecycle()

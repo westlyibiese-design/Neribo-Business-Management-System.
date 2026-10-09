@@ -55,7 +55,7 @@ internal fun DrinkForm(
     var available by rememberSaveable(key) { mutableStateOf(start.available) }
 
     val form = DrinkFormState(name, categoryKey, image, description, priceText, available)
-    val errors = validateDrinkFormState(form)
+    val errors = validateDrinkForm(form)
 
     val fields: @Composable () -> Unit = {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -118,10 +118,10 @@ internal fun DrinkForm(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 NbmsButton(
                     text = if (editing == null) "Save" else "Save Changes",
-                    onClick = { if (canSaveDrinkFormState(form, saving)) onSave(form) },
+                    onClick = { if (canSaveDrinkForm(form, saving)) onSave(form) },
                     modifier = Modifier.fillMaxWidth(),
                     loading = saving,
-                    enabled = canSaveDrinkFormState(form, saving) || saving,
+                    enabled = canSaveDrinkForm(form, saving) || saving,
                     leadingIcon = NbmsIcons.CheckCircle
                 )
                 NbmsButton(
