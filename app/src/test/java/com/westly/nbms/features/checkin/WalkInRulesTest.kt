@@ -49,7 +49,7 @@ class WalkInRulesTest {
             combineDateAndTime(LocalDate(2026, 10, 12), "11:00", lagos)
         )
         assertEquals(
-            Instant.parse("2026-10-12T11:00:00Z"),
+            Instant.parse("2026-10-12T12:00:00Z"),
             combineDateAndTime(LocalDate(2026, 10, 12), "12:00", TimeZone.UTC)
         )
     }
