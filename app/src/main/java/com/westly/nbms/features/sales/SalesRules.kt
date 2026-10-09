@@ -72,7 +72,7 @@ internal fun cartTotal(cart: List<CartItem>): Double = money(cart.sumOf { lineTo
 
 // ── manual entry ──
 
-internal data class ManualErrors(val name: String? = null, val price: String? = null, val quantity: String? = null) {
+data class ManualErrors(val name: String? = null, val price: String? = null, val quantity: String? = null) {
     val any: Boolean get() = name != null || price != null || quantity != null
 }
 
