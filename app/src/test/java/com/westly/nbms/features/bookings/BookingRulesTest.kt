@@ -140,9 +140,9 @@ class BookingRulesTest {
 
     @Test fun statusFilterCombinesWithSearch() {
         val list = listOf(
-            booking("1", status = "pending", guest = "Ada"),
-            booking("2", status = "confirmed", guest = "Ada"),
-            booking("3", status = "confirmed", guest = "Bola")
+            booking("1", status = "pending", guest = "Ada", email = null),
+            booking("2", status = "confirmed", guest = "Ada", email = null),
+            booking("3", status = "confirmed", guest = "Bola", email = null)
         )
         assertEquals(listOf("2", "3"), filterBookings(list, "", "confirmed").map { it.id })
         assertEquals(listOf("2"), filterBookings(list, "ada", "confirmed").map { it.id })
