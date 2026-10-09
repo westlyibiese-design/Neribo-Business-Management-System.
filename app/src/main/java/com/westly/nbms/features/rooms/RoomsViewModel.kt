@@ -159,7 +159,7 @@ class RoomsViewModel @Inject constructor(
     private val archiver: RecordArchiver,
     private val notifier: Notifier,
     private val toast: ToastController,
-    imageProviders: Set<ImageFieldProvider>
+    imageProviders: @JvmSuppressWildcards Set<ImageFieldProvider>
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(RoomsUiState())

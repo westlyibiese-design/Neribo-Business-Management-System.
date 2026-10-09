@@ -134,7 +134,7 @@ class VenuesViewModel @Inject constructor(
     private val audit: AuditLogger,
     private val archiver: RecordArchiver,
     private val toast: ToastController,
-    imageProviders: Set<ImageFieldProvider>
+    imageProviders: @JvmSuppressWildcards Set<ImageFieldProvider>
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(VenuesUiState())
