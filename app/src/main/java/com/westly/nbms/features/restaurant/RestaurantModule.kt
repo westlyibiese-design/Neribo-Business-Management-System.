@@ -8,7 +8,7 @@ import dagger.hilt.components.SingletonComponent
 import dagger.multibindings.IntoSet
 import javax.inject.Singleton
 
-/** Binds the Restaurant feature into the app's feature set, and the real database store behind the menu repository. */
+/** Binds the Restaurant feature into the app's feature set, and the real database stores behind the menu and orders repositories. */
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class RestaurantModule {
@@ -20,4 +20,8 @@ abstract class RestaurantModule {
     @Binds
     @Singleton
     abstract fun bindMenuStore(impl: FirestoreMenuStore): MenuStore
+
+    @Binds
+    @Singleton
+    abstract fun bindOrdersStore(impl: FirestoreOrdersStore): OrdersStore
 }
