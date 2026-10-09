@@ -20,6 +20,7 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import io.ktor.http.isSuccess
+import java.io.IOException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,6 +38,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -86,6 +88,14 @@ private sealed interface TokenResult {
 
 private const val MSG_NETWORK_NO_ACCESS = "Can't reach the server. Check your connection and try again."
 private const val MSG_SUSPENDED = "This account has been suspended. Contact your administrator."
+/** Every network step gives up after this long, so the app can never sit on the loading screen forever. */
+private const val TOKEN_TIMEOUT_MS = 10_000L
+private const val FIREBASE_TIMEOUT_MS = 10_000L
+private const val QUERY_TIMEOUT_MS = 12_000L
+
+/** If the app is still "Loading" this long after it started, it stops waiting and decides on its own. */
+private const val STARTUP_WATCHDOG_MS = 10_000L
+
 private const val MSG_LIVE_SESSION = "Could not start your live data session. Please try again in a moment."
 
 /**
@@ -118,7 +128,52 @@ class SessionManagerImpl @Inject constructor(
             _state.value = SessionState.SignedOut
         } else {
             scope.launch { watchSupabaseSession() }
+            scope.launch {
+                delay(STARTUP_WATCHDOG_MS)
+                if (_state.value is SessionState.Loading) resolveStuckStartup()
+            }
         }
+    }
+
+    /**
+     * The Supabase client never reported a result (for example it could not refresh an old session on a bad network).
+     * With a saved session we try to open it; without one we show the sign-in screen.
+     */
+    private suspend fun resolveStuckStartup() {
+        val hasSession = try {
+            supabase.auth.currentSessionOrNull() != null
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            false
+        }
+        if (hasSession) {
+            bootstrap(force = false)
+        } else if (_state.value is SessionState.Loading) {
+            _state.value = SessionState.SignedOut
+        }
+    }
+
+    /** Runs a network call but never waits longer than [QUERY_TIMEOUT_MS]; a timeout becomes an IOException. */
+    private suspend fun <T> net(block: suspend () -> T): T {
+        var done = false
+        var value: T? = null
+        withTimeoutOrNull(QUERY_TIMEOUT_MS) {
+            value = block()
+            done = true
+        }
+        if (!done) throw IOException("The server took too long to answer.")
+        @Suppress("UNCHECKED_CAST")
+        return value as T
+    }
+
+    private suspend fun firebaseSignIn(token: String) {
+        var done = false
+        withTimeoutOrNull(FIREBASE_TIMEOUT_MS) {
+            firebaseAuth.signInWithCustomToken(token).await()
+            done = true
+        }
+        if (!done) throw FirebaseNetworkException("Timed out signing in to the live data service.")
     }
 
     // ---------------------------------------------------------------- public API
@@ -230,7 +285,7 @@ class SessionManagerImpl @Inject constructor(
             }
             is TokenResult.Ok -> {
                 try {
-                    firebaseAuth.signInWithCustomToken(result.token).await()
+                    firebaseSignIn(result.token)
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: FirebaseNetworkException) {
@@ -247,37 +302,43 @@ class SessionManagerImpl @Inject constructor(
 
         // Read membership + business from Supabase.
         try {
-            val member = supabase.from("business_members")
-                .select(Columns.list("user_id", "business_id", "role", "name", "email", "phone", "status", "uses_pin")) {
-                    filter { eq("user_id", uid) }
-                }
-                .decodeSingleOrNull<MemberRow>()
+            val member = net {
+                supabase.from("business_members")
+                    .select(Columns.list("user_id", "business_id", "role", "name", "email", "phone", "status", "uses_pin")) {
+                        filter { eq("user_id", uid) }
+                    }
+                    .decodeSingleOrNull<MemberRow>()
+            }
             if (member == null) {
                 goNoAccess("No business account found for this user.")
                 return@withLock null
             }
-            val business = supabase.from("businesses")
-                .select(
-                    Columns.list(
-                        "id", "name", "code", "business_type", "currency", "currency_symbol",
-                        "timezone", "maintenance_mode", "maintenance_message"
-                    )
-                ) {
-                    filter { eq("id", member.businessId) }
-                }
-                .decodeSingleOrNull<BusinessRow>()
+            val business = net {
+                supabase.from("businesses")
+                    .select(
+                        Columns.list(
+                            "id", "name", "code", "business_type", "currency", "currency_symbol",
+                            "timezone", "maintenance_mode", "maintenance_message"
+                        )
+                    ) {
+                        filter { eq("id", member.businessId) }
+                    }
+                    .decodeSingleOrNull<BusinessRow>()
+            }
             if (business == null) {
                 goNoAccess("No business account found for this user.")
                 return@withLock null
             }
-            val roleRows = supabase.from("business_roles")
-                .select(Columns.list("role")) {
-                    filter {
-                        eq("business_id", member.businessId)
-                        eq("enabled", true)
+            val roleRows = net {
+                supabase.from("business_roles")
+                    .select(Columns.list("role")) {
+                        filter {
+                            eq("business_id", member.businessId)
+                            eq("enabled", true)
+                        }
                     }
-                }
-                .decodeList<RoleRow>()
+                    .decodeList<RoleRow>()
+            }
 
             val role = Role.fromKey(member.role)
             if (role == null) {
@@ -347,8 +408,8 @@ class SessionManagerImpl @Inject constructor(
         var attempt = 0
         while (true) {
             val result = fetchFirebaseToken()
-            if (result !is TokenResult.Network || silent || attempt >= 3) return result
-            delay(2_000L shl attempt) // 2s, 4s, 8s
+            if (result !is TokenResult.Network || silent || attempt >= 1) return result
+            delay(2_000L) // one quick retry, then give up
             attempt++
         }
     }
@@ -358,12 +419,16 @@ class SessionManagerImpl @Inject constructor(
         return try {
             // The Supabase client already sends the signed-in user's access token. Adding a second
             // Authorization header makes the server see "Not a JWT" and answer 401.
-            val response = supabase.functions.invoke(
-                function = "firebase-token",
-                body = JsonObject(emptyMap())
-            )
-            val text = response.bodyAsText()
-            if (response.status.isSuccess()) parseTokenBody(text) else classify(response.status.value, text)
+            var outcome: TokenResult? = null
+            withTimeoutOrNull(TOKEN_TIMEOUT_MS) {
+                val response = supabase.functions.invoke(
+                    function = "firebase-token",
+                    body = JsonObject(emptyMap())
+                )
+                val text = response.bodyAsText()
+                outcome = if (response.status.isSuccess()) parseTokenBody(text) else classify(response.status.value, text)
+            }
+            outcome ?: TokenResult.Network
         } catch (e: CancellationException) {
             throw e
         } catch (e: RestException) {
@@ -398,7 +463,7 @@ class SessionManagerImpl @Inject constructor(
         if (_state.value !is SessionState.SignedIn) return
         when (val result = obtainToken(silent = true)) {
             is TokenResult.Ok -> try {
-                firebaseAuth.signInWithCustomToken(result.token).await()
+                firebaseSignIn(result.token)
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) { }
