@@ -8,17 +8,17 @@ import com.westly.nbms.core.rbac.Role
 import javax.inject.Inject
 
 /**
- * Phase 26A2: the Task Assignment page only.
+ * The tasks feature: both pages.
  *
- * - `tasks` "Task Assignment" (Operations, order 60): Super Admin, Manager, Operations Manager.
- *
- * My Tasks (`my-tasks`) is added by Phase 26B, which replaces this file.
+ * - `my-tasks` "My Tasks" (no group, order 20): every role (Phase 26B).
+ * - `tasks` "Task Assignment" (Operations, order 60): Super Admin, Manager, Operations Manager (Phase 26A).
  */
 class TasksFeature @Inject constructor() : NbmsFeature {
     override val id: String = "tasks"
 
     override val screens: List<ScreenSpec> = listOf(
-        ScreenSpec("tasks") { _, session -> TasksScreen(session) }
+        ScreenSpec("tasks") { _, session -> TasksScreen(session) },
+        ScreenSpec("my-tasks") { _, session -> MyTasksScreen(session) }
     )
 
     override val nav: List<NavSpec> = listOf(
@@ -29,6 +29,15 @@ class TasksFeature @Inject constructor() : NbmsFeature {
             group = "Operations",
             order = 60,
             roles = setOf(Role.SUPER_ADMIN, Role.MANAGER, Role.OPERATIONS_MANAGER),
+            module = null
+        ),
+        NavSpec(
+            route = "my-tasks",
+            label = "My Tasks",
+            icon = NbmsIcons.ClipboardCheck,
+            group = null,
+            order = 20,
+            roles = null,
             module = null
         )
     )
