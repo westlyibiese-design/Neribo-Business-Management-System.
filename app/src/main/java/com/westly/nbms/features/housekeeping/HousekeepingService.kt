@@ -13,8 +13,9 @@ import com.westly.nbms.features.rooms.Cleanliness
 import com.westly.nbms.features.rooms.RoomLogic
 import com.westly.nbms.features.rooms.RoomStatus
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.tasks.await
-import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.withTimeout
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -125,8 +126,17 @@ internal class FirestoreHousekeepingStore(private val firestore: BusinessFiresto
     @Suppress("UNCHECKED_CAST")
     private fun toFirestoreMap(map: Map<String, Any?>): Map<String, Any?> = toFirestore(map) as Map<String, Any?>
 
+    /**
+     * Gives the write [HOUSEKEEPING_WRITE_TIMEOUT_MS] to finish. Only a real timeout becomes the "took too long" error.
+     * (A write's task result is null by design, so the old `withTimeoutOrNull(...) ?: throw` treated every successful
+     * update or batch as a timeout.)
+     */
     private suspend fun <T> withWriteTimeout(block: suspend () -> T): T =
-        withTimeoutOrNull(HOUSEKEEPING_WRITE_TIMEOUT_MS) { block() } ?: throw HousekeepingException(MSG_HOUSEKEEPING_TIMEOUT)
+        try {
+            withTimeout(HOUSEKEEPING_WRITE_TIMEOUT_MS) { block() }
+        } catch (e: TimeoutCancellationException) {
+            throw HousekeepingException(MSG_HOUSEKEEPING_TIMEOUT)
+        }
 
     override fun newId(collection: String): String = firestore.collection(collection).document().id
 

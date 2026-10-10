@@ -230,6 +230,9 @@ class HousekeepingOverviewViewModel internal constructor(
 
     private fun actor(): HousekeepingActor? = signedIn()?.let { HousekeepingActor(it.user.uid, it.user.name) }
 
+    /** Room id to the cleaning task already created for it while a Mark Clean has not finished yet. */
+    private val markCleanTaskIds = mutableMapOf<String, String>()
+
     /** Management Mark Clean: a `cleaning`/`medium` task assigned to me is created and completed at once. */
     fun markClean(room: Room) {
         val me = signedIn()
@@ -242,7 +245,8 @@ class HousekeepingOverviewViewModel internal constructor(
         _busyRoomIds.update { it + room.id }
         viewModelScope.launch {
             try {
-                val taskId = service.createManualTask(
+                // A retry after a failed finish reuses the task already created, so no duplicate task is left behind.
+                val taskId = markCleanTaskIds[room.id] ?: service.createManualTask(
                     roomId = room.id,
                     roomNumber = room.number,
                     type = TaskType.CLEANING,
@@ -251,9 +255,11 @@ class HousekeepingOverviewViewModel internal constructor(
                     assignedTo = actor.id,
                     assignedToName = actor.name,
                     actor = actor
-                )
+                ).also { markCleanTaskIds[room.id] = it }
                 service.completeTask(taskId, HousekeepingRoomRef(room.id, room.number, room.type), actor)
-                toast.show("Room ${room.number} is now available.", ToastType.Success, "Room Marked Clean")
+                markCleanTaskIds.remove(room.id)
+                val (title, message) = markCleanToast(room)
+                toast.show(message, ToastType.Success, title)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
