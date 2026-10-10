@@ -8,14 +8,21 @@ import com.westly.nbms.core.rbac.Role
 import javax.inject.Inject
 
 /**
- * Staff attendance: `attendance` "Attendance" (no group, order 190) for Super Admin, Manager, Receptionist and
- * Operations Manager. Phase 28B replaces this file to add the `attendance/record` route.
+ * Staff attendance.
+ *
+ * - `attendance` "Attendance" (no group, order 190) for Super Admin, Manager, Receptionist and Operations Manager:
+ *   the read-only register (Phase 28A).
+ * - `attendance/record` "Record Attendance" for Super Admin and Receptionist only (Phase 28B). It has no menu entry:
+ *   the register's button opens it, and the footer button on that page goes back. As with `roles` and `notifications`,
+ *   a page without a drawer item is just a [ScreenSpec]; who may open it is decided by the route guard
+ *   (`NavRules`: Super Admin and Receptionist for `attendance/record`), and the database rules enforce it again.
  */
 class AttendanceFeature @Inject constructor() : NbmsFeature {
     override val id: String = "attendance"
 
     override val screens: List<ScreenSpec> = listOf(
-        ScreenSpec("attendance") { _, session -> AttendanceScreen(session) }
+        ScreenSpec("attendance") { _, session -> AttendanceScreen(session) },
+        ScreenSpec("attendance/record") { _, session -> RecordAttendanceScreen(session) }
     )
 
     override val nav: List<NavSpec> = listOf(
