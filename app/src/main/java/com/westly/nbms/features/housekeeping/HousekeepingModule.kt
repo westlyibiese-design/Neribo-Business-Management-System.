@@ -1,14 +1,16 @@
 package com.westly.nbms.features.housekeeping
 
+import com.westly.nbms.core.feature.NbmsFeature
+import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
 import dagger.multibindings.Multibinds
 
 /**
- * Sub-phase 23B-1 version: only declares the (possibly empty) set of extra Overview buttons so Hilt can inject it
- * into the Overview ViewModel. Phase 24 adds its bindings with `@Binds @IntoSet`. Sub-phase 23B-2 replaces this file
- * with the full version that also binds the Housekeeping feature.
+ * Final Part 23B version: binds the Housekeeping feature and declares the (possibly empty) set of extra Overview
+ * buttons. Phase 24 adds its bindings with `@Binds @IntoSet`. `HousekeepingService` is bound by Part 23A, not here.
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -16,4 +18,8 @@ abstract class HousekeepingModule {
 
     @Multibinds
     abstract fun overviewActions(): Set<HousekeepingOverviewAction>
+
+    @Binds
+    @IntoSet
+    abstract fun bindFeature(f: HousekeepingFeature): NbmsFeature
 }
