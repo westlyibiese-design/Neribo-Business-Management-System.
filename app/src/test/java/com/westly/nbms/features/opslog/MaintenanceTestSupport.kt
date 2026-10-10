@@ -10,6 +10,7 @@ import com.westly.nbms.features.rooms.RoomStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.time.Instant
+import kotlinx.datetime.Instant as KInstant
 
 internal val MT_NOW: Instant = Instant.parse("2026-10-09T10:00:00Z")
 
@@ -62,9 +63,9 @@ internal class MtFakeRoomLogic : RoomLogic {
     val statusCalls = mutableListOf<Pair<String, RoomStatus>>()
     var failWith: Exception? = null
 
-    override fun datesOverlap(aIn: Instant, aOut: Instant, bIn: Instant, bOut: Instant): Boolean = aIn < bOut && aOut > bIn
-    override suspend fun detectConflict(roomId: String, checkIn: Instant, checkOut: Instant, excludeBookingId: String?): Boolean = false
-    override suspend fun findAvailableRooms(roomType: String, checkIn: Instant, checkOut: Instant): List<Room> = emptyList()
+    override fun datesOverlap(aIn: KInstant, aOut: KInstant, bIn: KInstant, bOut: KInstant): Boolean = aIn < bOut && aOut > bIn
+    override suspend fun detectConflict(roomId: String, checkIn: KInstant, checkOut: KInstant, excludeBookingId: String?): Boolean = false
+    override suspend fun findAvailableRooms(roomType: String, checkIn: KInstant, checkOut: KInstant): List<Room> = emptyList()
     override suspend fun updateRoomStatus(roomId: String, newStatus: RoomStatus, extra: Map<String, Any?>, allowOccupiedOverride: Boolean) {
         statusCalls += roomId to newStatus
         failWith?.let { throw it }
