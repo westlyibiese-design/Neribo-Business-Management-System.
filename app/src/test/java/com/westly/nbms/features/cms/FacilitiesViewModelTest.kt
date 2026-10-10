@@ -403,12 +403,11 @@ class FacilitiesViewModelTest {
         assertFalse(FacilitiesRules.isValid("a", " "))
     }
 
-    @Test fun theFeatureRegistersOnlyTheFacilitiesRouteForSuperAdminAndManager() {
+    @Test fun theFeatureStillRegistersTheFacilitiesRouteForSuperAdminAndManager() {
         val feature = CmsFeature()
         assertEquals("cms", feature.id)
-        assertEquals(listOf("facilities"), feature.screens.map { it.route })
-        val nav = feature.nav.single()
-        assertEquals("facilities", nav.route)
+        assertTrue("facilities" in feature.screens.map { it.route })
+        val nav = feature.nav.single { it.route == "facilities" }
         assertEquals("Facilities", nav.label)
         assertEquals(260, nav.order)
         assertNull(nav.group)
