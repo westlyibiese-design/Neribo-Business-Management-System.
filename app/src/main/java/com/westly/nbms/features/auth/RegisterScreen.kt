@@ -41,9 +41,9 @@ import com.westly.nbms.core.design.NbmsTextField
 import com.westly.nbms.core.design.nbms
 import com.westly.nbms.core.feature.AuthNavigator
 
-private val STEP_TITLES = listOf("Owner", "Hotel", "Roles")
+private val STEP_TITLES = listOf("Owner", "Hotel", "Roles", "Verify email")
 
-/** Register your business (route `auth/register`): a 3-step wizard and a success screen. */
+/** Register your business (route `auth/register`): a 4-step wizard (the last step checks the email code) and a success screen. */
 @Composable
 fun RegisterScreen(nav: AuthNavigator, vm: RegisterViewModel = hiltViewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -64,7 +64,7 @@ fun RegisterScreen(nav: AuthNavigator, vm: RegisterViewModel = hiltViewModel()) 
             } else {
                 AuthCardHeader(
                     title = "Register your business",
-                    description = "Step ${state.step} of 3 · ${STEP_TITLES[state.step - 1]}"
+                    description = "Step ${state.step} of 4 · ${STEP_TITLES[state.step - 1]}"
                 )
                 Column(
                     Modifier
@@ -76,7 +76,8 @@ fun RegisterScreen(nav: AuthNavigator, vm: RegisterViewModel = hiltViewModel()) 
                     when (state.step) {
                         1 -> OwnerStep(state, vm)
                         2 -> HotelStep(state, vm)
-                        else -> RolesStep(state, vm)
+                        3 -> RolesStep(state, vm)
+                        else -> VerifyStep(state, vm)
                     }
                 }
                 Row(
@@ -94,15 +95,36 @@ fun RegisterScreen(nav: AuthNavigator, vm: RegisterViewModel = hiltViewModel()) 
                     )
                     if (state.step < 3) {
                         NbmsButton(text = "Next", onClick = vm::next, modifier = Modifier.weight(1f))
-                    } else {
+                    } else if (state.step == 3) {
                         NbmsButton(
-                            text = "Create my business",
+                            text = "Send verification code",
                             onClick = vm::submit,
                             modifier = Modifier.weight(1f),
                             loading = state.submitting,
                             enabled = !state.submitting
                         )
+                    } else {
+                        NbmsButton(
+                            text = "Verify and create",
+                            onClick = vm::verifyAndCreate,
+                            modifier = Modifier.weight(1f),
+                            loading = state.submitting,
+                            enabled = !state.submitting
+                        )
                     }
+                }
+                if (state.step == 4) {
+                    val canResend = state.resendSeconds == 0 && !state.submitting
+                    NbmsButton(
+                        text = if (state.resendSeconds > 0) "Resend code in ${state.resendSeconds}s" else "Resend code",
+                        onClick = vm::resendCode,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
+                        variant = ButtonVariant.Link,
+                        size = ButtonSize.Sm,
+                        enabled = canResend
+                    )
                 }
             }
         }
@@ -152,6 +174,25 @@ private fun HotelStep(state: RegisterUiState, vm: RegisterViewModel) {
     )
     NbmsTextField(
         value = "Africa/Lagos", onValueChange = { }, label = "Timezone", enabled = false
+    )
+}
+
+@Composable
+private fun VerifyStep(state: RegisterUiState, vm: RegisterViewModel) {
+    val scheme = MaterialTheme.colorScheme
+    Text(
+        "We sent a 6-digit code to ${state.email.trim()}. Enter it below to confirm this email belongs to you.",
+        style = MaterialTheme.typography.bodyMedium,
+        color = scheme.onSurfaceVariant
+    )
+    NbmsTextField(
+        value = state.code,
+        onValueChange = vm::onCode,
+        label = "Verification code",
+        placeholder = "6-digit code",
+        keyboardType = KeyboardType.NumberPassword,
+        error = state.codeError,
+        enabled = !state.submitting
     )
 }
 

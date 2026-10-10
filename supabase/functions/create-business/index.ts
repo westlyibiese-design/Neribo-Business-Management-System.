@@ -1,5 +1,6 @@
 // create-business (public): registers a new business and its Super Admin.
-// Request:  { ownerName, email, password, phone?, businessName, businessType?: "hotel", enabledRoles: string[] }
+// The email must first be verified in the app with a 6-digit code; the app then sends the access token that code produced.
+// Request:  { ownerName, email, password, phone?, businessName, businessType?: "hotel", enabledRoles: string[], verificationToken }
 // Response: { ok:true, businessId, businessCode }  or  { ok:false, error }
 import { handleOptions } from "../_shared/cors.ts";
 import { fail, ok } from "../_shared/response.ts";
@@ -28,6 +29,8 @@ const EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 const PHONE_RE = /^\+?[0-9\s\-()]+$/;
 const MAX_PER_HOUR = 5;
 const GENERIC_FAILURE = "Could not create your business. Please try again.";
+// Must read exactly like MSG_VERIFY_EXPIRED in the Android app (RegistrationApi.kt).
+const VERIFY_EXPIRED = "Your email verification has expired. Please verify your email again.";
 
 function asText(v: unknown): string {
   return typeof v === "string" ? v.trim() : "";
@@ -105,26 +108,36 @@ Deno.serve(async (req: Request) => {
     return fail(500, GENERIC_FAILURE);
   }
 
-  // ---- 3. Create the sign-in account ------------------------------------
+  // ---- 3. Use the account that the verified email code created ------------
+  // The app proves the email with a 6-digit code and sends the resulting access token. The account comes from
+  // that token, never from the typed email, so nobody can register an address they cannot read mail for.
+  const token = asText(body.verificationToken);
+  if (!token) return fail(400, "Please verify your email first.");
+
   let userId = "";
   try {
-    const { data, error } = await db.auth.admin.createUser({
-      email,
+    const got = await db.auth.getUser(token);
+    const verified = got.data?.user;
+    if (got.error || !verified) return fail(401, VERIFY_EXPIRED);
+    if ((verified.email ?? "").toLowerCase() !== email || !verified.email_confirmed_at) return fail(401, VERIFY_EXPIRED);
+    userId = verified.id;
+
+    // An address that already runs a business (or belongs to staff) cannot register again.
+    const existing = await db.from("business_members").select("user_id").eq("user_id", userId).limit(1);
+    if (existing.error) throw new Error("member lookup failed");
+    if ((existing.data ?? []).length > 0) return fail(409, "An account with this email already exists.");
+
+    const updated = await db.auth.admin.updateUserById(userId, {
       password,
       email_confirm: true,
       user_metadata: { name: ownerName },
     });
-    if (error || !data?.user) {
-      const text = `${error?.message ?? ""} ${(error as { code?: string } | null)?.code ?? ""}`.toLowerCase();
-      if (text.includes("already") || text.includes("exists") || text.includes("registered")) {
-        return fail(409, "An account with this email already exists.");
-      }
-      console.error("create-business: createUser failed:", error?.message ?? "no user returned");
+    if (updated.error) {
+      console.error("create-business: set password failed:", updated.error.message);
       return fail(500, GENERIC_FAILURE);
     }
-    userId = data.user.id;
   } catch (e) {
-    console.error("create-business: createUser threw:", e instanceof Error ? e.message : "unknown");
+    console.error("create-business: verification step threw:", e instanceof Error ? e.message : "unknown");
     return fail(500, GENERIC_FAILURE);
   }
 

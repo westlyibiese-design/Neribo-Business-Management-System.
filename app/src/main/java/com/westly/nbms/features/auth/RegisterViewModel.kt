@@ -10,6 +10,10 @@ import com.westly.nbms.core.rbac.Role
 import com.westly.nbms.core.session.SessionManager
 import com.westly.nbms.core.util.Validators
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.jan.supabase.exceptions.RestException
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -91,8 +95,11 @@ object RegisterValidation {
         if (value.trim().length in 2..120) null else "Business name must be 2 to 120 characters."
 }
 
+internal const val MSG_CODE_NOT_SENT = "We couldn't send the code. Please wait a minute and try again."
+internal const val MSG_SIGNUP_BAD_CODE = "That code is wrong or has expired. Check it or request a new one."
+
 data class RegisterUiState(
-    val step: Int = 1,                       // 1 = Owner, 2 = Hotel, 3 = Roles
+    val step: Int = 1,                       // 1 = Owner, 2 = Hotel, 3 = Roles, 4 = Verify email
     val fullName: String = "",
     val email: String = "",
     val phone: String = "",
@@ -106,6 +113,9 @@ data class RegisterUiState(
     val passwordError: String? = null,
     val confirmError: String? = null,
     val businessNameError: String? = null,
+    val code: String = "",                   // the 6-digit email code, never saved to SavedStateHandle
+    val codeError: String? = null,
+    val resendSeconds: Int = 0,
     val serverError: String? = null,
     val submitting: Boolean = false,
     val signingIn: Boolean = false,
@@ -116,6 +126,7 @@ data class RegisterUiState(
 @HiltViewModel
 class RegisterViewModel @Inject constructor(
     private val api: RegistrationApi,
+    private val recovery: RecoveryClient,
     private val sessionManager: SessionManager,
     private val toast: ToastController,
     private val saved: SavedStateHandle
@@ -127,6 +138,10 @@ class RegisterViewModel @Inject constructor(
     /** Kept only in memory so the success screen's Continue button can sign in. */
     private var signInEmail: String = ""
     private var signInPassword: String = ""
+
+    /** The address the last code was sent to, and the countdown before another code may be requested. */
+    private var codeSentTo: String = ""
+    private var cooldownJob: Job? = null
 
     private fun restore(): RegisterUiState {
         val roleKeys = saved.get<ArrayList<String>>(K_ROLES)
@@ -162,6 +177,10 @@ class RegisterViewModel @Inject constructor(
     fun onPhone(v: String) = change { it.copy(phone = v, phoneError = null) }
     fun onPassword(v: String) = change { it.copy(password = v, passwordError = null) }
     fun onConfirmPassword(v: String) = change { it.copy(confirmPassword = v, confirmError = null) }
+    fun onCode(v: String) = change {
+        it.copy(code = v.filter { c -> c.isDigit() }.take(6), codeError = null, serverError = null)
+    }
+
     fun onBusinessName(v: String) = change { it.copy(businessName = v, businessNameError = null, serverError = null) }
 
     fun onToggleRole(role: Role, checked: Boolean) = change {
@@ -203,17 +222,73 @@ class RegisterViewModel @Inject constructor(
         val s = _state.value
         if (s.createdBusinessCode != null || s.submitting) return true
         return if (s.step > 1) {
-            change { it.copy(step = it.step - 1, serverError = null) }
+            change { it.copy(step = it.step - 1, code = "", codeError = null, serverError = null) }
             true
         } else false
     }
 
     // ------------------------------------------------------------ submit
 
+    /** "Create my business" on step 3: emails the 6-digit code and opens the Verify email step. */
     fun submit() {
         val s = _state.value
         if (s.submitting || s.createdBusinessCode != null) return
-        // Re-check the earlier steps (state may have been restored after the app was closed).
+        if (!earlierStepsAreValid(s)) return
+        val email = s.email.trim().lowercase()
+        // A code was just sent to this same address: do not send another one, just show the step again.
+        if (s.resendSeconds > 0 && codeSentTo == email) {
+            change { it.copy(step = 4, code = "", codeError = null, serverError = null) }
+            return
+        }
+        sendCode(email, openStep4 = true)
+    }
+
+    /** "Resend code" on step 4. */
+    fun resendCode() {
+        val s = _state.value
+        if (s.submitting || s.resendSeconds > 0) return
+        sendCode(s.email.trim().lowercase(), openStep4 = false)
+    }
+
+    private fun sendCode(email: String, openStep4: Boolean) {
+        change { it.copy(submitting = true, serverError = null) }
+        viewModelScope.launch {
+            try {
+                recovery.sendSignupCode(email)
+                codeSentTo = email
+                change {
+                    it.copy(
+                        submitting = false,
+                        step = 4,
+                        code = if (openStep4) "" else it.code,
+                        codeError = null,
+                        serverError = null
+                    )
+                }
+                startCooldown()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: RestException) {
+                change { it.copy(submitting = false, serverError = MSG_CODE_NOT_SENT) }
+            } catch (e: Exception) {
+                change { it.copy(submitting = false, serverError = MSG_REGISTER_NETWORK) }
+            }
+        }
+    }
+
+    private fun startCooldown() {
+        cooldownJob?.cancel()
+        cooldownJob = viewModelScope.launch {
+            for (left in RESEND_COOLDOWN_SECONDS downTo 1) {
+                change { it.copy(resendSeconds = left) }
+                delay(1_000)
+            }
+            change { it.copy(resendSeconds = 0) }
+        }
+    }
+
+    /** Re-checks steps 1 and 2 (state may have been restored after the app was closed). Moves back to the broken step when not valid. */
+    private fun earlierStepsAreValid(s: RegisterUiState): Boolean {
         val problems = listOf(
             RegisterValidation.fullName(s.fullName), RegisterValidation.email(s.email),
             RegisterValidation.phone(s.phone), RegisterValidation.password(s.password),
@@ -228,17 +303,39 @@ class RegisterViewModel @Inject constructor(
                     serverError = "Please check your details and enter your password again."
                 )
             }
-            return
+            return false
         }
         val businessErr = RegisterValidation.businessName(s.businessName)
         if (businessErr != null) {
             change { it.copy(step = 2, businessNameError = businessErr) }
+            return false
+        }
+        return true
+    }
+
+    /** "Verify and create my business" on step 4: checks the code, then creates the business. */
+    fun verifyAndCreate() {
+        val s = _state.value
+        if (s.submitting || s.createdBusinessCode != null) return
+        if (!earlierStepsAreValid(s)) return
+        if (s.code.length != 6) {
+            change { it.copy(codeError = "Enter the 6-digit code from your email.") }
             return
         }
-
         val email = s.email.trim().lowercase()
-        change { it.copy(submitting = true, serverError = null) }
+        change { it.copy(submitting = true, serverError = null, codeError = null) }
         viewModelScope.launch {
+            val token = try {
+                recovery.verifySignupCode(email, s.code)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: InvalidRecoveryCodeException) {
+                change { it.copy(submitting = false, codeError = MSG_SIGNUP_BAD_CODE) }
+                return@launch
+            } catch (e: Exception) {
+                change { it.copy(submitting = false, serverError = MSG_REGISTER_NETWORK) }
+                return@launch
+            }
             val request = CreateBusinessRequest(
                 ownerName = s.fullName.trim(),
                 email = email,
@@ -246,24 +343,32 @@ class RegisterViewModel @Inject constructor(
                 phone = s.phone.trim().ifEmpty { null },
                 businessName = s.businessName.trim(),
                 businessType = "hotel",
-                enabledRoles = Rbac.assignableRoles.filter { it in s.selectedRoles }.map { it.key }
+                enabledRoles = Rbac.assignableRoles.filter { it in s.selectedRoles }.map { it.key },
+                verificationToken = token
             )
             api.createBusiness(request).fold(
                 onSuccess = { result ->
+                    recovery.endSignupVerification()
+                    cooldownJob?.cancel()
                     signInEmail = email
                     signInPassword = s.password
                     change {
                         it.copy(
                             submitting = false,
                             createdBusinessCode = result.businessCode,
-                            password = "", confirmPassword = ""
+                            password = "", confirmPassword = "", code = "", resendSeconds = 0
                         )
                     }
                 },
                 onFailure = { e ->
                     val message = e.message ?: MSG_REGISTER_GENERIC
-                    val toStep = if (message == MSG_EMAIL_EXISTS) 1 else 3
-                    change { it.copy(submitting = false, serverError = message, step = toStep) }
+                    val toStep = when (message) {
+                        MSG_EMAIL_EXISTS -> 1
+                        MSG_VERIFY_EXPIRED -> 3
+                        else -> 4
+                    }
+                    if (toStep != 4) recovery.endSignupVerification()
+                    change { it.copy(submitting = false, serverError = message, step = toStep, code = "") }
                 }
             )
         }

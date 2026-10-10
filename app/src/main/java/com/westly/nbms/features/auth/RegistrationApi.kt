@@ -25,7 +25,9 @@ data class CreateBusinessRequest(
     val phone: String? = null,
     val businessName: String,
     val businessType: String = "hotel",
-    val enabledRoles: List<String>
+    val enabledRoles: List<String>,
+    /** Access token from the verified email code. The server takes the account from it. */
+    val verificationToken: String
 )
 
 data class CreateBusinessResult(val businessId: String, val businessCode: String)
@@ -36,6 +38,7 @@ class RegistrationException(message: String, val statusCode: Int? = null) : Exce
 internal const val MSG_REGISTER_GENERIC = "Could not create your business. Please try again."
 internal const val MSG_REGISTER_NETWORK = "Can't reach the server. Check your connection and try again."
 internal const val MSG_EMAIL_EXISTS = "An account with this email already exists."
+internal const val MSG_VERIFY_EXPIRED = "Your email verification has expired. Please verify your email again."
 
 /** Pulls the `error` text out of a server reply such as {"ok":false,"error":"..."}; null when there is none. */
 internal fun extractServerError(vararg candidates: String?): String? {

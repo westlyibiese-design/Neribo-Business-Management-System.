@@ -5,6 +5,7 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.OtpType
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.providers.builtin.OTP
 import io.github.jan.supabase.auth.user.UserSession
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.exceptions.RestException
@@ -45,6 +46,36 @@ class RecoveryClient @Inject constructor(
     /** Asks Supabase to email a 6-digit code. */
     suspend fun sendResetCode(email: String) {
         client.auth.resetPasswordForEmail(email.trim())
+    }
+
+    /** Registration: emails a 6-digit code to the address (a new account is prepared for it if none exists). */
+    suspend fun sendSignupCode(email: String) {
+        client.auth.signInWith(OTP) {
+            this.email = email.trim()
+            createUser = true
+        }
+    }
+
+    /**
+     * Registration: checks the code and returns the access token that proves this email belongs to the person.
+     * The session stays in memory only. Throws [InvalidRecoveryCodeException] when the code is wrong or expired.
+     */
+    suspend fun verifySignupCode(email: String, code: String): String {
+        try {
+            client.auth.verifyEmailOtp(type = OtpType.Email.EMAIL, email = email.trim(), token = code.trim())
+        } catch (e: RestException) {
+            throw InvalidRecoveryCodeException()
+        }
+        return client.auth.currentAccessTokenOrNull() ?: throw InvalidRecoveryCodeException()
+    }
+
+    /** Registration: forgets the in-memory verification session. Never throws. */
+    suspend fun endSignupVerification() {
+        try {
+            client.auth.signOut()
+        } catch (_: Exception) {
+            // In memory only, so a failed sign-out changes nothing.
+        }
     }
 
     /**
