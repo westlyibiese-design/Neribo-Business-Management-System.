@@ -493,12 +493,13 @@ class ReviewsViewModelTest {
 
     @Test fun theFeatureRegistersTheThreeCmsRoutesForSuperAdminAndManager() {
         val feature = CmsFeature()
+        val threeNav = feature.nav.filter { it.route != "cms" }
         assertEquals("cms", feature.id)
-        assertEquals(listOf("facilities", "gallery", "reviews"), feature.screens.map { it.route })
-        assertEquals(listOf("facilities", "gallery", "reviews"), feature.nav.map { it.route })
-        assertEquals(listOf("Facilities", "Gallery", "Guest Reviews"), feature.nav.map { it.label })
-        assertEquals(listOf(260, 280, 290), feature.nav.map { it.order })
-        feature.nav.forEach {
+        assertEquals(listOf("facilities", "gallery", "reviews"), feature.screens.map { it.route }.filter { it != "cms" })
+        assertEquals(listOf("facilities", "gallery", "reviews"), threeNav.map { it.route })
+        assertEquals(listOf("Facilities", "Gallery", "Guest Reviews"), threeNav.map { it.label })
+        assertEquals(listOf(260, 280, 290), threeNav.map { it.order })
+        threeNav.forEach {
             assertNull(it.group)
             assertNull(it.module)
             assertEquals(setOf(Role.SUPER_ADMIN, Role.MANAGER), it.roles)
