@@ -35,6 +35,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.westly.nbms.core.design.AdaptiveSideBySide
 import com.westly.nbms.core.design.ButtonSize
 import com.westly.nbms.core.design.ErrorState
 import com.westly.nbms.core.design.NbmsButton
@@ -225,7 +226,7 @@ private fun RequestCard(
                     }
                 }
                 if (stacked) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    AdaptiveSideBySide {
                         ChargeText(request, symbol, busy, onCharge)
                         if (next != null) AdvanceButton(next, busy, onAdvance)
                     }

@@ -27,6 +27,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,10 +35,12 @@ import androidx.compose.ui.draw.paint
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.westly.nbms.core.design.nbms
@@ -47,13 +50,20 @@ import com.westly.nbms.core.design.nbmsShadow
 /**
  * Shared full-screen layout for the auth screens: always-dark navy background,
  * content centred, scrolls when the keyboard is open, column at most 448dp wide.
+ *
+ * With [compact] = true the page is tightened (smaller gaps, text size capped at 110% of normal) so a
+ * short form such as Staff Sign In fits on one phone screen without scrolling.
  */
 @Composable
 fun AuthBackground(
     modifier: Modifier = Modifier,
     @DrawableRes backgroundRes: Int? = null,
+    compact: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val density = LocalDensity.current
+    val shownDensity = if (compact && density.fontScale > 1.1f) Density(density.density, 1.1f) else density
+    CompositionLocalProvider(LocalDensity provides shownDensity) {
     Box(
         modifier
             .fillMaxSize()
@@ -68,8 +78,8 @@ fun AuthBackground(
                 Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(16.dp)
-                    .heightIn(min = minHeight - 32.dp),
+                    .padding(if (compact) 12.dp else 16.dp)
+                    .heightIn(min = minHeight - if (compact) 24.dp else 32.dp),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -78,11 +88,12 @@ fun AuthBackground(
                         .widthIn(max = 448.dp)
                         .fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(if (compact) 12.dp else 24.dp),
                     content = content
                 )
             }
         }
+    }
     }
 }
 
@@ -107,13 +118,14 @@ fun Modifier.authPhoto(@DrawableRes res: Int?): Modifier {
 
 /** Logo mark (64dp navy square with a gold "N"), the "NBMS" title and the "Management Portal" subtitle. */
 @Composable
-fun AuthBrandHeader(subtitle: String = "Management Portal") {
+fun AuthBrandHeader(subtitle: String = "Management Portal", compact: Boolean = false) {
+    val logoSize = if (compact) 48.dp else 64.dp
     val nbms = MaterialTheme.nbms
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             Modifier
                 .nbmsShadow(8.dp, RoundedCornerShape(16.dp))
-                .size(64.dp)
+                .size(logoSize)
                 .clip(RoundedCornerShape(16.dp))
                 .background(Color(0xFF203A6F))
                 .border(1.dp, nbms.drawerBorder, RoundedCornerShape(16.dp)),
@@ -125,7 +137,7 @@ fun AuthBrandHeader(subtitle: String = "Management Portal") {
                 style = nbmsBrandTitleStyle()
             )
         }
-        Spacer(Modifier.size(16.dp))
+        Spacer(Modifier.size(if (compact) 8.dp else 16.dp))
         Text("NBMS", style = nbmsBrandTitleStyle(), color = nbms.drawerForeground)
         Text(
             subtitle,
@@ -156,8 +168,11 @@ fun AuthCard(
 
 /** Card title + description, 24dp padding. */
 @Composable
-fun AuthCardHeader(title: String, description: String) {
-    Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+fun AuthCardHeader(title: String, description: String, compact: Boolean = false) {
+    Column(
+        if (compact) Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 12.dp) else Modifier.padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 6.dp)
+    ) {
         Text(
             title,
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold, letterSpacing = (-0.4).sp),

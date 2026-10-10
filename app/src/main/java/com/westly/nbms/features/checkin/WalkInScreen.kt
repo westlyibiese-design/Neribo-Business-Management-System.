@@ -39,6 +39,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.westly.nbms.core.design.AdaptiveTwoColumn
+import com.westly.nbms.core.design.LabelValueRowSlot
 import com.westly.nbms.core.design.ButtonSize
 import com.westly.nbms.core.design.ButtonVariant
 import com.westly.nbms.core.design.NbmsButton
@@ -239,18 +241,16 @@ private fun RoomAndDatesCard(
 
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             FieldLabel("Check-In Date & Time *")
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            AdaptiveTwoColumn {
                 NbmsDatePickerField(
                     label = "",
                     value = form.checkInDate,
-                    onChange = vm::setCheckInDate,
-                    modifier = Modifier.weight(1.4f)
+                    onChange = vm::setCheckInDate
                 )
                 NbmsTimePickerField(
                     label = "",
                     value = form.checkInTime,
-                    onChange = vm::setCheckInTime,
-                    modifier = Modifier.weight(1f)
+                    onChange = vm::setCheckInTime
                 )
             }
         }
@@ -500,12 +500,5 @@ private fun SuccessPanel(
 
 @Composable
 private fun SummaryRow(label: String, value: @Composable () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        value()
-    }
+    LabelValueRowSlot(label = label, value = value)
 }

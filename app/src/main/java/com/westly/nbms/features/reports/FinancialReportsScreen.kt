@@ -36,6 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.westly.nbms.core.design.LabelValueRow
 import com.westly.nbms.core.design.ButtonSize
 import com.westly.nbms.core.design.ButtonVariant
 import com.westly.nbms.core.design.ErrorState
@@ -283,19 +284,12 @@ private fun ExpenseBreakdownCard(report: FinancialReport, symbol: String) {
             report.expensesByCategory.forEach { (category, amount) ->
                 val share = if (report.totalExpenses <= 0.0) 0f else (amount / report.totalExpenses).toFloat().coerceIn(0f, 1f)
                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            category.label,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Text(
-                            Format.currency(amount, symbol),
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
+                    LabelValueRow(
+                        label = category.label,
+                        value = Format.currency(amount, symbol),
+                        valueWeight = FontWeight.Medium,
+                        labelColor = MaterialTheme.colorScheme.onSurface
+                    )
                     Box(Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(track)) {
                         Box(Modifier.fillMaxWidth(share).height(6.dp).clip(RoundedCornerShape(3.dp)).background(fill))
                     }
@@ -338,19 +332,15 @@ private fun StatementRow(label: String, value: String, bold: Boolean = false, co
     val scheme = MaterialTheme.colorScheme
     val base = if (large) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium
     val weight = if (bold) FontWeight.Bold else FontWeight.Normal
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            label,
-            style = base.copy(fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal),
-            color = scheme.onSurface,
-            modifier = Modifier.weight(1f)
-        )
-        Text(
-            value,
-            style = base.copy(fontWeight = weight),
-            color = if (color == Color.Unspecified) scheme.onSurface else color
-        )
-    }
+    LabelValueRow(
+        label = label,
+        value = value,
+        valueColor = color,
+        valueWeight = weight,
+        labelColor = scheme.onSurface,
+        labelStyle = base.copy(fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal),
+        valueStyle = base
+    )
 }
 
 @Composable

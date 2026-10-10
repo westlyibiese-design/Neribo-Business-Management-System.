@@ -47,6 +47,7 @@ import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.westly.nbms.core.design.LabelValueRow
 import com.westly.nbms.core.design.BadgeTone
 import com.westly.nbms.core.design.ButtonSize
 import com.westly.nbms.core.design.ButtonVariant
@@ -268,10 +269,14 @@ private fun CartPanel(vm: NewSaleViewModel, state: NewSaleUiState, symbol: Strin
                 CartLine(line, symbol, onMinus = { vm.decrement(line.id) }, onPlus = { vm.increment(line.id) })
             }
             HorizontalDivider()
-            Row(Modifier.fillMaxWidth()) {
-                Text("Total", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                Text(Format.currency(total, symbol), fontWeight = FontWeight.Bold)
-            }
+            LabelValueRow(
+                label = "Total",
+                value = Format.currency(total, symbol),
+                modifier = Modifier.fillMaxWidth(),
+                valueWeight = FontWeight.Bold,
+                labelStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                labelColor = MaterialTheme.colorScheme.onSurface
+            )
         }
         NbmsTextField(
             state.customerName, vm::setCustomerName, "Customer Name (optional)", placeholder = "Guest name"
@@ -366,16 +371,23 @@ private fun SaleSuccessPanel(success: SaleSuccess, symbol: String, usesPin: Bool
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             success.lines.forEach { l ->
-                Row(Modifier.fillMaxWidth()) {
-                    Text("${l.name} ×${l.quantity}", fontSize = 14.sp, modifier = Modifier.weight(1f))
-                    Text(Format.currency(lineTotal(l), symbol), fontSize = 14.sp)
-                }
+                LabelValueRow(
+                    label = "${l.name} ×${l.quantity}",
+                    value = Format.currency(lineTotal(l), symbol),
+                    labelStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+                    valueStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+                    labelColor = MaterialTheme.colorScheme.onSurface
+                )
             }
             HorizontalDivider()
-            Row(Modifier.fillMaxWidth()) {
-                Text("Total", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                Text(Format.currency(success.total, symbol), fontWeight = FontWeight.Bold)
-            }
+            LabelValueRow(
+                label = "Total",
+                value = Format.currency(success.total, symbol),
+                modifier = Modifier.fillMaxWidth(),
+                valueWeight = FontWeight.Bold,
+                labelStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                labelColor = MaterialTheme.colorScheme.onSurface
+            )
         }
         if (usesPin) {
             Text(

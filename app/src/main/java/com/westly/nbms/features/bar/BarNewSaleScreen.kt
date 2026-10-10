@@ -48,6 +48,7 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.westly.nbms.core.design.LabelValueRow
 import com.westly.nbms.core.design.BadgeTone
 import com.westly.nbms.core.design.ButtonVariant
 import com.westly.nbms.core.design.ErrorState
@@ -283,10 +284,14 @@ private fun SalePanel(vm: BarNewSaleViewModel, state: BarNewSaleUiState, symbol:
                 SaleLineRow(line, symbol, onMinus = { vm.decrement(line.id) }, onPlus = { vm.increment(line.id) })
             }
             HorizontalDivider()
-            Row(Modifier.fillMaxWidth()) {
-                Text("Total", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                Text(Format.currency(total, symbol), fontWeight = FontWeight.Bold)
-            }
+            LabelValueRow(
+                label = "Total",
+                value = Format.currency(total, symbol),
+                modifier = Modifier.fillMaxWidth(),
+                valueWeight = FontWeight.Bold,
+                labelStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                labelColor = MaterialTheme.colorScheme.onSurface
+            )
         }
         NbmsTextField(state.form.roomNumber, vm::setRoomNumber, "Room Number", placeholder = "e.g. 201")
         NbmsTextField(state.form.tableNumber, vm::setTableNumber, "Table Number", placeholder = "e.g. B-03")

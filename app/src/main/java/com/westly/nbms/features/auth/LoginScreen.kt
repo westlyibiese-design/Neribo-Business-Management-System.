@@ -5,6 +5,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -31,6 +33,7 @@ import com.westly.nbms.core.design.NbmsTextField
 import com.westly.nbms.core.feature.AuthNavigator
 
 /** Staff Sign In (route `auth/login`). */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun LoginScreen(nav: AuthNavigator, vm: LoginViewModel = hiltViewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -38,16 +41,16 @@ fun LoginScreen(nav: AuthNavigator, vm: LoginViewModel = hiltViewModel()) {
     // This is the start screen: the back button does nothing here.
     BackHandler(enabled = true) { }
 
-    AuthBackground(backgroundRes = R.drawable.auth_bg_login) {
-        AuthBrandHeader()
+    AuthBackground(backgroundRes = R.drawable.auth_bg_login, compact = true) {
+        AuthBrandHeader(compact = true)
 
         AuthCard {
-            AuthCardHeader("Staff Sign In", "Enter your credentials to access the portal")
+            AuthCardHeader("Staff Sign In", "Enter your credentials to access the portal", compact = true)
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .padding(start = 24.dp, end = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(start = 20.dp, end = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 NbmsTextField(
                     value = state.email,
@@ -72,8 +75,8 @@ fun LoginScreen(nav: AuthNavigator, vm: LoginViewModel = hiltViewModel()) {
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                    .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 NbmsButton(
@@ -85,12 +88,13 @@ fun LoginScreen(nav: AuthNavigator, vm: LoginViewModel = hiltViewModel()) {
                     enabled = !state.busy
                 )
                 if (state.pinLoginAvailable) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
+                        verticalArrangement = Arrangement.Center
                     ) {
                         Text(
                             "Shared device?",
+                            modifier = Modifier.padding(vertical = 8.dp),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -111,7 +115,9 @@ fun LoginScreen(nav: AuthNavigator, vm: LoginViewModel = hiltViewModel()) {
                             Text(
                                 "Use PIN Login",
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                                color = MaterialTheme.colorScheme.primary
+                                color = MaterialTheme.colorScheme.primary,
+                                maxLines = 1,
+                                softWrap = false
                             )
                         }
                     }
@@ -121,7 +127,7 @@ fun LoginScreen(nav: AuthNavigator, vm: LoginViewModel = hiltViewModel()) {
 
         Column(
             Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             AuthLink("Forgot your password?", onClick = { nav.go("auth/forgot") }, enabled = !state.busy)

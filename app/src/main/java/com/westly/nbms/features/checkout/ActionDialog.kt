@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
@@ -39,6 +40,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import com.westly.nbms.core.design.ButtonSize
 import com.westly.nbms.core.design.ButtonVariant
+import com.westly.nbms.core.design.LabelValueRowSlot
 import com.westly.nbms.core.design.NbmsButton
 import com.westly.nbms.core.design.NbmsIcons
 import com.westly.nbms.core.design.PillColors
@@ -118,18 +120,19 @@ internal fun ActionDialog(
     }
 }
 
-/** A label on the left and a value on the right (summary boxes). */
+/** A label on the left and a value on the right (summary boxes). Stacks on narrow screens (see LabelValueRowSlot). */
 @Composable
-internal fun SummaryRow(label: String, value: @Composable () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.weight(1f))
-        value()
-    }
+internal fun SummaryRow(
+    label: String,
+    note: String? = null,
+    noteColor: Color = Color.Unspecified,
+    value: @Composable () -> Unit
+) {
+    val tint = if (noteColor == Color.Unspecified) MaterialTheme.colorScheme.onSurfaceVariant else noteColor
+    val noteContent: (@Composable () -> Unit)? = if (note != null) {
+        { Text(note, style = MaterialTheme.typography.bodySmall, color = tint, textAlign = TextAlign.End) }
+    } else null
+    LabelValueRowSlot(label = label, note = noteContent, value = value)
 }
 
 @Composable

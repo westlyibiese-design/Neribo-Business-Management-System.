@@ -45,6 +45,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
+import com.westly.nbms.core.design.AdaptiveTwoColumn
+import com.westly.nbms.core.design.LabelValueRowSlot
 import com.westly.nbms.core.design.ButtonSize
 import com.westly.nbms.core.design.ButtonVariant
 import com.westly.nbms.core.design.NbmsButton
@@ -167,19 +169,17 @@ internal fun ReservationCheckInDialog(
                 // Date and time
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Check-In Date & Time *", style = MaterialTheme.typography.labelLarge, color = scheme.onSurface)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    AdaptiveTwoColumn {
                         NbmsDatePickerField(
                             label = "",
                             value = state.date,
                             onChange = vm::setCheckInDate,
-                            modifier = Modifier.weight(1.4f),
                             enabled = !busy
                         )
                         NbmsTimePickerField(
                             label = "",
                             value = state.time,
                             onChange = vm::setCheckInTime,
-                            modifier = Modifier.weight(1f),
                             enabled = !busy
                         )
                     }
@@ -337,14 +337,7 @@ private fun CompleteButton(busy: Boolean, enabled: Boolean, onClick: () -> Unit)
 
 @Composable
 private fun SummaryRow(label: String, value: @Composable () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) { value() }
-    }
+    LabelValueRowSlot(label = label, value = value)
 }
 
 @Composable

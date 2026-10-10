@@ -49,6 +49,8 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.westly.nbms.core.design.AdaptiveSideBySide
+import com.westly.nbms.core.design.LabelValueRow
 import com.westly.nbms.core.design.ButtonSize
 import com.westly.nbms.core.design.ButtonVariant
 import com.westly.nbms.core.design.EmptyState
@@ -422,7 +424,7 @@ private fun PaymentCard(doc: PaymentDoc, symbol: String, zone: ZoneId) {
                 }
                 PaymentStatusBadge(paymentStatusKey(doc.approvalStatus))
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            AdaptiveSideBySide {
                 PaymentAmountText(doc, symbol)
                 Text(paymentsMethodLabel(doc.paymentMethod), style = MaterialTheme.typography.bodySmall, color = muted)
             }
@@ -508,16 +510,15 @@ private fun PaymentsTableRow(header: Boolean, cell: @Composable (Int) -> Unit) {
 @Composable
 private fun PaymentsTotalRow(approvedTotal: Double, symbol: String, modifier: Modifier = Modifier) {
     val green = MaterialTheme.nbms.success
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text("Total (Approved)", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = green)
-        Text(Format.currency(approvedTotal, symbol), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = green)
-    }
+    LabelValueRow(
+        label = "Total (Approved)",
+        value = Format.currency(approvedTotal, symbol),
+        modifier = modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+        valueColor = green,
+        valueWeight = FontWeight.Bold,
+        labelColor = green,
+        labelStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
+    )
 }
 
 @Composable

@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.westly.nbms.core.design.ButtonVariant
+import com.westly.nbms.core.design.FlowChips
 import com.westly.nbms.core.design.NbmsButton
 import com.westly.nbms.core.design.NbmsDropdown
 import com.westly.nbms.core.design.NbmsIcons
@@ -124,7 +125,7 @@ internal fun ExtendStayDialog(booking: Booking, onDismiss: () -> Unit) {
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Additional Nights", style = MaterialTheme.typography.labelLarge, color = scheme.onSurface)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowChips {
                     QUICK_NIGHTS.forEach { n ->
                         NightChip(chipText(n), selected = extraNights == n, enabled = !busy) { nightsText = n.toString() }
                     }

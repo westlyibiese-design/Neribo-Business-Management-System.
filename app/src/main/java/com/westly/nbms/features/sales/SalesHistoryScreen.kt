@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.westly.nbms.core.design.LabelValueRow
 import com.westly.nbms.core.design.BadgeTone
 import com.westly.nbms.core.design.EmptyState
 import com.westly.nbms.core.design.ErrorState
@@ -123,10 +124,15 @@ private fun ItemChips(sale: Sale) {
 
 @Composable
 private fun TotalRow(total: Double, symbol: String) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
-        Text("Total", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
-        Text(Format.currency(total, symbol), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-    }
+    LabelValueRow(
+        label = "Total",
+        value = Format.currency(total, symbol),
+        modifier = Modifier.padding(horizontal = 4.dp),
+        valueWeight = FontWeight.Bold,
+        labelStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+        valueColor = MaterialTheme.colorScheme.primary,
+        labelColor = MaterialTheme.colorScheme.primary
+    )
 }
 
 @Composable
@@ -154,10 +160,15 @@ private fun SalesTable(rows: List<Sale>, total: Double, symbol: String, tz: Time
                     Text(paymentText(s.paymentMethod), fontSize = 14.sp, modifier = Modifier.weight(1f))
                 }
             }
-            Row(Modifier.fillMaxWidth().padding(top = 12.dp)) {
-                Text("Total", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
-                Text(Format.currency(total, symbol), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-            }
+            LabelValueRow(
+        label = "Total",
+        value = Format.currency(total, symbol),
+        modifier = Modifier.padding(top = 12.dp),
+        valueWeight = FontWeight.Bold,
+        labelStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+        valueColor = MaterialTheme.colorScheme.primary,
+        labelColor = MaterialTheme.colorScheme.primary
+    )
         }
     }
 }

@@ -29,6 +29,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.westly.nbms.core.design.AdaptiveTwoColumn
 import com.westly.nbms.core.design.ButtonVariant
 import com.westly.nbms.core.design.NbmsButton
 import com.westly.nbms.core.design.NbmsDropdown
@@ -68,8 +69,7 @@ internal fun FormSheet(
                     Text(
                         title,
                         style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.weight(1f)
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                     Icon(
                         imageVector = NbmsIcons.Close,
@@ -185,23 +185,21 @@ fun RoomFormDialog(
             if (!found.hasErrors) onSave(input)
         }
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        AdaptiveTwoColumn {
             NbmsTextField(
                 value = number,
                 onValueChange = { number = it; errors = errors.copy(number = null) },
                 label = "Room Number *",
                 placeholder = "101",
                 error = errors.number,
-                enabled = !saving,
-                modifier = Modifier.weight(1f)
+                enabled = !saving
             )
             NbmsTextField(
                 value = floor,
                 onValueChange = { floor = it },
                 label = "Floor",
                 placeholder = "1",
-                enabled = !saving,
-                modifier = Modifier.weight(1f)
+                enabled = !saving
             )
         }
         NbmsDropdown(
@@ -219,7 +217,7 @@ fun RoomFormDialog(
             placeholder = "e.g. Ocean View Deluxe (optional — shown on the website instead of the room type)",
             enabled = !saving
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        AdaptiveTwoColumn {
             NbmsTextField(
                 value = priceText,
                 onValueChange = { priceText = cleanNumberInput(it, allowDot = true); errors = errors.copy(price = null) },
@@ -227,8 +225,7 @@ fun RoomFormDialog(
                 placeholder = "45000",
                 keyboardType = KeyboardType.Decimal,
                 error = errors.price,
-                enabled = !saving,
-                modifier = Modifier.weight(1f)
+                enabled = !saving
             )
             NbmsTextField(
                 value = capacityText,
@@ -237,8 +234,7 @@ fun RoomFormDialog(
                 placeholder = "2",
                 keyboardType = KeyboardType.Number,
                 error = errors.capacity,
-                enabled = !saving,
-                modifier = Modifier.weight(1f)
+                enabled = !saving
             )
         }
         if (imageProvider != null) {

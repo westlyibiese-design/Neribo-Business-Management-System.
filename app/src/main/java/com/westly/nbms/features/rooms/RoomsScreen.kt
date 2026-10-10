@@ -42,6 +42,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.westly.nbms.core.data.Resource
+import com.westly.nbms.core.design.AdaptiveSideBySide
 import com.westly.nbms.core.design.EmptyState
 import com.westly.nbms.core.design.ErrorState
 import com.westly.nbms.core.design.LoadingState
@@ -226,7 +227,7 @@ private fun RoomCard(
                 }
                 NbmsPill(text = display.label, colors = roomPillColors(display))
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            AdaptiveSideBySide {
                 Text(
                     buildAnnotatedString {
                         withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = scheme.primary)) {
@@ -234,8 +235,7 @@ private fun RoomCard(
                         }
                         withStyle(SpanStyle(fontSize = 12.sp, color = scheme.onSurfaceVariant)) { append("/night") }
                     },
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.weight(1f)
+                    style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
                     "${room.capacity} guests",

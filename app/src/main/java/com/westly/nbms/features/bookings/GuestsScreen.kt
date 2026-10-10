@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.westly.nbms.core.data.Resource
+import com.westly.nbms.core.design.LabelValueRow
 import com.westly.nbms.core.design.Avatar
 import com.westly.nbms.core.design.BadgeTone
 import com.westly.nbms.core.design.ButtonSize
@@ -138,10 +139,12 @@ private fun GuestCard(guest: Guest, onView: () -> Unit) {
 
 @Composable
 private fun LabeledLine(label: String, value: String) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
-    }
+    LabelValueRow(
+        label = label,
+        value = value,
+        labelStyle = MaterialTheme.typography.bodySmall,
+        valueStyle = MaterialTheme.typography.bodySmall
+    )
 }
 
 @Composable

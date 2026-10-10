@@ -18,6 +18,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.westly.nbms.core.design.AdaptiveTwoColumn
 import com.westly.nbms.core.design.ButtonVariant
 import com.westly.nbms.core.design.NbmsButton
 import com.westly.nbms.core.design.NbmsDatePickerField
@@ -89,12 +90,11 @@ internal fun CheckOutConfirmDialog(
             SummaryRow("Guest") { BoldText(booking.guestName) }
             SummaryRow("Room") { BoldText("Room ${booking.roomNumber}") }
             SummaryRow("Scheduled Checkout") { BoldText(Format.dateTime(scheduled, zone)) }
-            SummaryRow("Room Charges") {
-                Row {
-                    BoldText(Format.currency(booking.totalAmount, symbol))
-                    if (paid) Text(" (paid at check-in)", style = MaterialTheme.typography.bodyMedium, color = nbms.success)
-                }
-            }
+            SummaryRow(
+                "Room Charges",
+                note = if (paid) "(paid at check-in)" else null,
+                noteColor = nbms.success
+            ) { BoldText(Format.currency(booking.totalAmount, symbol)) }
             if (extras > 0.0) {
                 SummaryRow("Extra Charges") {
                     Text(
@@ -120,19 +120,17 @@ internal fun CheckOutConfirmDialog(
         // Actual date and time
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Actual Check-Out Date & Time *", style = MaterialTheme.typography.labelLarge, color = scheme.onSurface)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            AdaptiveTwoColumn {
                 NbmsDatePickerField(
                     label = "",
                     value = draft.actualDate,
                     onChange = vm::setActualDate,
-                    modifier = Modifier.weight(1.4f),
                     enabled = !busy
                 )
                 NbmsTimePickerField(
                     label = "",
                     value = draft.actualTime,
                     onChange = vm::setActualTime,
-                    modifier = Modifier.weight(1f),
                     enabled = !busy
                 )
             }

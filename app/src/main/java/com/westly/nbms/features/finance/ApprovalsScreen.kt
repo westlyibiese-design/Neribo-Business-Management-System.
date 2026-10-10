@@ -52,6 +52,8 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.westly.nbms.core.design.AdaptiveSideBySide
+import com.westly.nbms.core.design.LabelValueRow
 import com.westly.nbms.core.design.BadgeTone
 import com.westly.nbms.core.design.EmptyState
 import com.westly.nbms.core.design.ErrorState
@@ -677,7 +679,7 @@ private fun HistoryCard(txn: RevenueTransaction, symbol: String, tz: TimeZone) {
                 }
                 ApprovalsStatusBadge(txn.approvalStatus)
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            AdaptiveSideBySide {
                 ApprovalsAmountText(txn, symbol)
                 Text(approvalsMethodLabel(txn.paymentMethod), style = MaterialTheme.typography.bodySmall, color = muted)
             }
@@ -790,7 +792,7 @@ private fun DailyCard(record: DailyRecord, symbol: String) {
     )
     NbmsCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            AdaptiveSideBySide {
                 Text(
                     record.label,
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
@@ -807,10 +809,11 @@ private fun DailyCard(record: DailyRecord, symbol: String) {
             }
             HorizontalDivider(color = MaterialTheme.nbms.cardBorder)
             rows.forEach { (label, amount) ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(label, style = MaterialTheme.typography.bodyMedium, color = muted)
-                    Text(Format.currency(amount, symbol), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                }
+                LabelValueRow(
+                    label = label,
+                    value = Format.currency(amount, symbol),
+                    labelColor = muted
+                )
             }
             HorizontalDivider(color = MaterialTheme.nbms.cardBorder)
             Text(dailyFooterText(record), style = MaterialTheme.typography.bodySmall, color = muted)
