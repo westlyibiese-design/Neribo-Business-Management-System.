@@ -34,6 +34,7 @@ import kotlinx.datetime.TimeZone
 import java.time.YearMonth
 import java.time.ZoneId
 import javax.inject.Inject
+import com.westly.nbms.core.util.Branding
 
 internal const val MSG_FINANCIAL_LOAD_FAILED = "We couldn't load financial data."
 
@@ -119,7 +120,7 @@ class FinancialReportsViewModel @Inject constructor(
             expenses = expenseResource,
             month = month,
             zone = financialZoneOf(signedIn?.business?.timezone),
-            businessName = signedIn?.business?.name ?: "NBMS",
+            businessName = signedIn?.business?.name ?: Branding.APP_NAME,
             currencySymbol = signedIn?.business?.currencySymbol ?: "₦"
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FinancialReportsView.Loading)

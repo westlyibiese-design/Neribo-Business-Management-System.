@@ -4,7 +4,7 @@ Native Android app (Kotlin + Jetpack Compose) for hotel and business staff. This
 The app is **never built on a phone or laptop**: GitHub Actions builds the APK for you.
 
 - Package name: `com.westly.nbms`
-- Display name everywhere in the app: **NBMS**
+- Display name everywhere in the app: **NeriboBMS** (no spaces)
 - Current state: **Phase 0** (project, build and look). The app opens on a temporary *Component gallery*.
 
 ## Get the APK

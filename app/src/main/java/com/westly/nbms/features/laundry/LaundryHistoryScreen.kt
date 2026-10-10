@@ -44,6 +44,7 @@ import com.westly.nbms.core.session.SessionState
 import com.westly.nbms.core.util.Format
 import kotlinx.datetime.TimeZone
 import java.io.File
+import com.westly.nbms.core.util.Branding
 
 private val LAUNDRY_HISTORY_TABLET_WIDTH = 840.dp
 
@@ -233,7 +234,7 @@ private fun shareLaundryHistoryCsv(context: Context, export: LaundryHistoryExpor
 
     val dir = File(context.cacheDir, LAUNDRY_HISTORY_SHARE_FOLDER).apply { mkdirs() }
     val file = File(dir, safeName)
-    file.writeBytes(export.content.toByteArray(Charsets.UTF_8))
+    file.writeBytes(Branding.csvWithCopyright(export.content).toByteArray(Charsets.UTF_8))
 
     val uri = FileProvider.getUriForFile(context, context.packageName + ".fileprovider", file)
     val send = Intent(Intent.ACTION_SEND).apply {

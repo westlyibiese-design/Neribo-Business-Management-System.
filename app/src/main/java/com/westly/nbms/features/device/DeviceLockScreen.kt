@@ -55,6 +55,7 @@ import com.westly.nbms.core.design.NbmsIcons
 import com.westly.nbms.core.design.nbms
 import com.westly.nbms.core.design.nbmsBrandSmallStyle
 import com.westly.nbms.core.design.nbmsBrandTitleStyle
+import com.westly.nbms.core.design.NbmsLogoMark
 
 /** Full-screen "Welcome back" lock. It sits on top of everything and swallows every touch. */
 @Composable
@@ -97,16 +98,11 @@ fun DeviceLockScreen(
                 verticalArrangement = Arrangement.spacedBy(if (compact) 12.dp else 20.dp)
             ) {
                 if (!compact) {
-                    Box(
-                        Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(Color(0xFF203A6F))
-                            .border(1.dp, nbms.drawerBorder, RoundedCornerShape(10.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("N", style = nbmsBrandSmallStyle().copy(fontSize = 18.sp), color = nbms.drawerPrimary)
-                    }
+                    NbmsLogoMark(
+                        size = 40.dp,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.border(1.dp, nbms.drawerBorder, RoundedCornerShape(10.dp))
+                    )
                 }
                 Box(
                     Modifier

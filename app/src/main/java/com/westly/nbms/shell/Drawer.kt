@@ -53,6 +53,8 @@ import com.westly.nbms.core.design.nbms
 import com.westly.nbms.core.design.nbmsBrandSmallStyle
 import com.westly.nbms.core.feature.NavSpec
 import com.westly.nbms.core.session.SessionState
+import com.westly.nbms.core.util.Branding
+import com.westly.nbms.core.design.NbmsLogoMark
 
 private val DrawerWidth = 240.dp
 
@@ -144,22 +146,10 @@ private fun DrawerHeader() {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Logo mark: navy square with a gold "N".
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFF203A6F)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    "N",
-                    style = nbmsBrandSmallStyle().copy(fontSize = 20.sp, lineHeight = 24.sp),
-                    color = nbms.drawerPrimary
-                )
-            }
+            // Logo mark: the official app icon.
+            NbmsLogoMark(size = 36.dp, shape = RoundedCornerShape(8.dp))
             Column {
-                Text("NBMS", style = nbmsBrandSmallStyle(), color = nbms.drawerForeground)
+                Text(Branding.APP_NAME, style = nbmsBrandSmallStyle(), color = nbms.drawerForeground)
                 Text(
                     "MANAGEMENT",
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp, lineHeight = 14.sp, letterSpacing = 0.5.sp),

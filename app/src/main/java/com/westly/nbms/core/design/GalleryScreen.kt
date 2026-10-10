@@ -28,6 +28,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
+import com.westly.nbms.core.util.Branding
 
 private data class SampleItem(val id: Int, val title: String, val detail: String)
 
@@ -87,7 +88,7 @@ fun GalleryScreen(
         ) {
             // Header and theme switch
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("NBMS", style = nbmsBrandTitleStyle(), color = scheme.onBackground)
+                Text(Branding.APP_NAME, style = nbmsBrandTitleStyle(), color = scheme.onBackground)
                 Text("Component gallery (temporary)", style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
                 NbmsSegmentedTabs(
                     tabs = listOf("Light", "Dark", "System"),

@@ -14,6 +14,7 @@ import com.westly.nbms.R
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
+import com.westly.nbms.core.util.Branding
 
 /** Extra on the launch intent that carries the Westly-style link of a tapped push. */
 const val EXTRA_LINK = "link"
@@ -63,7 +64,7 @@ class NbmsMessagingService : FirebaseMessagingService() {
 
         val notification = NotificationCompat.Builder(this, NotificationChannels.DEFAULT_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_notification)
-            .setContentTitle(title ?: "NBMS")
+            .setContentTitle(title ?: Branding.APP_NAME)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setPriority(NotificationCompat.PRIORITY_HIGH)

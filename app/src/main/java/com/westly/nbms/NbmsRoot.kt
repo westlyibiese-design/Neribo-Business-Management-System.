@@ -56,6 +56,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.westly.nbms.core.util.Branding
 
 @HiltViewModel
 class RootViewModel @Inject constructor(
@@ -161,7 +162,7 @@ private fun AuthHost(screens: List<AuthScreenSpec>) {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("NBMS", style = nbmsBrandTitleStyle(), color = MaterialTheme.colorScheme.onBackground)
+            Text(Branding.APP_NAME, style = nbmsBrandTitleStyle(), color = MaterialTheme.colorScheme.onBackground)
             Text(
                 "Sign-in is not available yet.",
                 style = MaterialTheme.typography.bodyMedium,

@@ -6,12 +6,18 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.content.FileProvider
 import java.io.File
+import com.westly.nbms.core.util.Branding
 
 /** Thin wrapper: write a file to the cache, then open the Android share sheet for it. Never throws. */
 object ShareFiles {
 
     fun shareText(context: Context, fileName: String, content: String, mimeType: String = "text/csv"): Result<Unit> =
-        shareBytes(context, fileName, content.toByteArray(Charsets.UTF_8), mimeType)
+        shareBytes(
+            context,
+            fileName,
+            (if (mimeType == "text/csv") Branding.csvWithCopyright(content) else content).toByteArray(Charsets.UTF_8),
+            mimeType
+        )
 
     fun shareBytes(context: Context, fileName: String, bytes: ByteArray, mimeType: String): Result<Unit> =
         runCatching {

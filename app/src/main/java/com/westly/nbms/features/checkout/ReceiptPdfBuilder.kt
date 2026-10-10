@@ -6,6 +6,7 @@ import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
 import com.westly.nbms.core.util.Format
 import java.io.OutputStream
+import com.westly.nbms.core.util.Branding
 
 /**
  * Draws the guest receipt as an A5 portrait PDF with [PdfDocument]. Navy `#0B1F3A` and gold `#C9A24B`, system
@@ -139,7 +140,10 @@ internal object ReceiptPdfBuilder {
         var y = TOP
 
         fun newPage() {
-            page?.let { doc.finishPage(it) }
+            page?.let {
+                drawCopyright()
+                doc.finishPage(it)
+            }
             number++
             val info = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, number).create()
             val p = doc.startPage(info)
@@ -149,8 +153,16 @@ internal object ReceiptPdfBuilder {
         }
 
         fun finish() {
-            page?.let { doc.finishPage(it) }
+            page?.let {
+                drawCopyright()
+                doc.finishPage(it)
+            }
             page = null
+        }
+
+        /** The copyright line, centred at the bottom of every page. */
+        private fun drawCopyright() {
+            textCentered(Branding.COPYRIGHT, PAGE_WIDTH / 2f, paint(9f, false, GREY), baseline = PAGE_HEIGHT - 18f)
         }
 
         fun ensure(height: Float) {
@@ -172,7 +184,11 @@ internal object ReceiptPdfBuilder {
             if (advance) y = baseline + 5f
         }
 
-        fun textCentered(text: String, centerX: Float, paint: Paint) {
+        fun textCentered(text: String, centerX: Float, paint: Paint, baseline: Float? = null) {
+            if (baseline != null) {
+                canvas?.drawText(text, centerX - paint.measureText(text) / 2f, baseline, paint)
+                return
+            }
             y += paint.textSize
             canvas?.drawText(text, centerX - paint.measureText(text) / 2f, y, paint)
             y += 5f

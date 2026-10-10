@@ -126,6 +126,7 @@ class FinancialReportPdfLayoutTest {
             val texts = page.elements.filterIsInstance<PdfText>().map { it.text }
             assertTrue(texts.contains("Only approved transactions are counted as revenue."))
             assertTrue(texts.contains("Page ${index + 1} of ${l.pages.size}"))
+            assertTrue(texts.contains("\u00A9 Neribo Group"))
         }
     }
 
@@ -148,7 +149,7 @@ class FinancialReportPdfLayoutTest {
         val l = layout(bottom = bottom)
         l.pages.forEach { page ->
             page.elements.filterIsInstance<PdfText>()
-                .filter { it.text != "Only approved transactions are counted as revenue." && !it.text.startsWith("Page ") }
+                .filter { it.text != "Only approved transactions are counted as revenue." && !it.text.startsWith("Page ") && it.text != "\u00A9 Neribo Group" }
                 .forEach { assertTrue("${it.text} at ${it.y}", it.y <= bottom) }
         }
     }
@@ -160,7 +161,7 @@ class FinancialReportPdfLayoutTest {
         assertTrue(name.text.endsWith("…"))
     }
 
-    @Test fun blankBusinessName_fallsBackToNbms() {
-        assertTrue(layout(sampleReport(businessName = "  ")).has("NBMS"))
+    @Test fun blankBusinessName_fallsBackToAppName() {
+        assertTrue(layout(sampleReport(businessName = "  ")).has("NeriboBMS"))
     }
 }

@@ -8,7 +8,7 @@ import android.os.Build
 /** The one Android notification channel NBMS uses. The `send-push` function names the same id. */
 object NotificationChannels {
     const val DEFAULT_CHANNEL_ID = "nbms_default"
-    const val DEFAULT_CHANNEL_NAME = "NBMS notifications"
+    const val DEFAULT_CHANNEL_NAME = "NeriboBMS notifications"
 
     /** Creates the channel (HIGH importance). Safe to call as often as you like. */
     fun ensure(context: Context) {

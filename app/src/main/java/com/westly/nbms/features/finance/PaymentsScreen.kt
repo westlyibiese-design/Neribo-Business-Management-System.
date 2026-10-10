@@ -80,6 +80,7 @@ import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.TextStyle
 import java.util.Locale
+import com.westly.nbms.core.util.Branding
 
 private val PAYMENTS_TABLET_WIDTH = 600.dp
 private const val PAYMENTS_TABLE_PAGE_SIZE = 15
@@ -560,7 +561,7 @@ private suspend fun sharePaymentsCsv(context: Context, csv: String, fileName: St
     val uri = withContext(Dispatchers.IO) {
         val dir = File(context.cacheDir, "exports").apply { mkdirs() }
         val file = File(dir, fileName)
-        file.writeText(csv, Charsets.UTF_8)
+        file.writeText(Branding.csvWithCopyright(csv), Charsets.UTF_8)
         FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
     }
     val send = Intent(Intent.ACTION_SEND).apply {

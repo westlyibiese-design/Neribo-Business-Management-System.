@@ -21,11 +21,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathMeasure
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.westly.nbms.core.util.Branding
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.hypot
@@ -75,7 +78,7 @@ private fun pulse(t: Float, start: Float, period: Float): Float {
 }
 
 /**
- * Full-screen animated NBMS logo: three golden arches draw themselves, a glowing sun appears, a light sweeps across.
+ * Full-screen animated NeriboBMS logo: three golden arches draw themselves, a glowing sun appears, a light sweeps across.
  * It paints its own navy background, so it looks the same in light and dark mode. [footer] is for an optional
  * hint at the bottom (for example "Still connecting…").
  */
@@ -100,6 +103,7 @@ fun AnimatedLogoScreen(
         }
     }
     val segment = remember { Path() }
+    val copyrightPaint = remember { android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { textAlign = android.graphics.Paint.Align.CENTER } }
 
     Box(modifier.fillMaxSize()) {
         Canvas(Modifier.fillMaxSize()) {
@@ -140,9 +144,20 @@ fun AnimatedLogoScreen(
                     drawOrb(t)
                 }
             }
+            drawCopyright(t, side, floatY, copyrightPaint)
         }
         footer()
     }
+}
+
+/** "\u00A9 Neribo Group", centred directly beneath the arches (they end at y = 941 of the 1254 design space) and fading in after them. */
+private fun DrawScope.drawCopyright(t: Float, side: Float, floatY: Float, paint: android.graphics.Paint) {
+    val appear = progress(t, 2.4f, 0.9f)
+    if (appear <= 0f) return
+    val logoBottom = (size.height - side) / 2f + floatY + side * (941f / VIEW)
+    paint.textSize = 14.sp.toPx()
+    paint.color = GoldLight.copy(alpha = 0.8f * appear).toArgb()
+    drawContext.canvas.nativeCanvas.drawText(Branding.COPYRIGHT, size.width / 2f, logoBottom + 36.dp.toPx(), paint)
 }
 
 private fun DrawScope.drawBackground() {

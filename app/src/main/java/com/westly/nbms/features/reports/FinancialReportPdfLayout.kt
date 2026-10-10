@@ -2,6 +2,7 @@ package com.westly.nbms.features.reports
 
 import com.westly.nbms.core.util.Format
 import com.westly.nbms.features.finance.RevenueCategory
+import com.westly.nbms.core.util.Branding
 
 // Pure layout of the Financial Report PDF: plain texts and lines at fixed positions on A4 portrait pages (points).
 // No android.* classes here, so it is unit-tested on the JVM. FinancialReportPdf.kt only draws what this produces.
@@ -123,7 +124,7 @@ internal object FinancialReportPdfLayout {
         }
 
         fun drawHeader(generatedAt: String, generatedBy: String) {
-            val name = report.businessName.trim().ifEmpty { "NBMS" }
+            val name = report.businessName.trim().ifEmpty { Branding.APP_NAME }
             text(MARGIN, 62f, fit(name, 20f, true, RIGHT - MARGIN), 20f, true, NAVY)
             line(MARGIN, 72f, RIGHT, 72f, 2.5f, GOLD)
             text(MARGIN, 98f, "Financial Report — $monthLabel", 16f, true, INK)
@@ -248,6 +249,7 @@ internal object FinancialReportPdfLayout {
                 elements += PdfLine(MARGIN, FOOTER_Y - 14f, RIGHT, FOOTER_Y - 14f, 0.8f, GOLD)
                 elements += PdfText(MARGIN, FOOTER_Y, FINANCIAL_REPORT_FOOTER, 9f, false, MUTED)
                 elements += PdfText(RIGHT, FOOTER_Y, "Page ${index + 1} of $count", 9f, false, MUTED, PdfAlign.RIGHT)
+                elements += PdfText(MARGIN, FOOTER_Y + 14f, Branding.COPYRIGHT, 8f, false, MUTED)
             }
             return PdfLayout(PAGE_WIDTH, PAGE_HEIGHT, pages.map { PdfPage(it.toList()) })
         }

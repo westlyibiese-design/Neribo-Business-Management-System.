@@ -10,6 +10,7 @@ import com.westly.nbms.features.users.models.AuditLogEntry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import com.westly.nbms.core.util.Branding
 
 internal const val CSV_HEADER = "\"Timestamp\",\"User\",\"Role\",\"Action\",\"Collection\",\"Document ID\""
 
@@ -37,7 +38,7 @@ internal object AuditCsvExporter {
         val uri = withContext(Dispatchers.IO) {
             val dir = File(context.cacheDir, "exports").apply { mkdirs() }
             val file = File(dir, fileName)
-            file.writeText(csv, Charsets.UTF_8)
+            file.writeText(Branding.csvWithCopyright(csv), Charsets.UTF_8)
             FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
         }
         val send = Intent(Intent.ACTION_SEND).apply {

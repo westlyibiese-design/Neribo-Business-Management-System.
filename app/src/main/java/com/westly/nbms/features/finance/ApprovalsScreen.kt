@@ -83,6 +83,7 @@ import kotlinx.datetime.toKotlinInstant
 import kotlinx.datetime.toKotlinLocalDate
 import java.io.File
 import java.time.LocalDate
+import com.westly.nbms.core.util.Branding
 
 private val APPROVALS_TABLET_WIDTH = 600.dp
 private const val APPROVALS_TABLE_PAGE_SIZE = 15
@@ -904,7 +905,7 @@ private suspend fun shareTransactionsCsv(context: Context, csv: String, fileName
     val uri = withContext(Dispatchers.IO) {
         val dir = File(context.cacheDir, "exports").apply { mkdirs() }
         val file = File(dir, fileName)
-        file.writeText(csv, Charsets.UTF_8)
+        file.writeText(Branding.csvWithCopyright(csv), Charsets.UTF_8)
         FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
     }
     val send = Intent(Intent.ACTION_SEND).apply {

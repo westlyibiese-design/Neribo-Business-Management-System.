@@ -46,6 +46,8 @@ import androidx.compose.ui.unit.sp
 import com.westly.nbms.core.design.nbms
 import com.westly.nbms.core.design.nbmsBrandTitleStyle
 import com.westly.nbms.core.design.nbmsShadow
+import com.westly.nbms.core.util.Branding
+import com.westly.nbms.core.design.NbmsLogoMark
 
 /**
  * Shared full-screen layout for the auth screens: always-dark navy background,
@@ -116,29 +118,21 @@ fun Modifier.authPhoto(@DrawableRes res: Int?): Modifier {
         )
 }
 
-/** Logo mark (64dp navy square with a gold "N"), the "NBMS" title and the "Management Portal" subtitle. */
+/** Logo mark (the official app icon), the "NeriboBMS" title and the "Management Portal" subtitle. */
 @Composable
 fun AuthBrandHeader(subtitle: String = "Management Portal", compact: Boolean = false) {
     val logoSize = if (compact) 48.dp else 64.dp
     val nbms = MaterialTheme.nbms
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(
-            Modifier
+        NbmsLogoMark(
+            size = logoSize,
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier
                 .nbmsShadow(8.dp, RoundedCornerShape(16.dp))
-                .size(logoSize)
-                .clip(RoundedCornerShape(16.dp))
-                .background(Color(0xFF203A6F))
-                .border(1.dp, nbms.drawerBorder, RoundedCornerShape(16.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                "N",
-                color = nbms.drawerPrimary,
-                style = nbmsBrandTitleStyle()
-            )
-        }
+                .border(1.dp, nbms.drawerBorder, RoundedCornerShape(16.dp))
+        )
         Spacer(Modifier.size(if (compact) 8.dp else 16.dp))
-        Text("NBMS", style = nbmsBrandTitleStyle(), color = nbms.drawerForeground)
+        Text(Branding.APP_NAME, style = nbmsBrandTitleStyle(), color = nbms.drawerForeground)
         Text(
             subtitle,
             style = MaterialTheme.typography.bodyMedium,
