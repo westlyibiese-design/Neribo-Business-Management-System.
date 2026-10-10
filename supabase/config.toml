@@ -25,3 +25,8 @@ verify_jwt = false
 
 [functions.device-revoke]
 verify_jwt = false
+
+# Phase 24: housekeeping auto-queue. Called by the 5-minute schedule (header x-cron-key) and by "Run Queue Now".
+# The function checks the caller itself, so the gateway must not demand a JWT.
+[functions.housekeeping-queue-run]
+verify_jwt = false
