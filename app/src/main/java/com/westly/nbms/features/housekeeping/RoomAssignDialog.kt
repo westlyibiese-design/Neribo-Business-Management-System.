@@ -174,7 +174,7 @@ class RoomAssignDialogViewModel @Inject constructor(
     fun today(): LocalDate = LocalDate.now(zoneOfSession(session))
 
     /** Validates, saves, and tells the person. [onDone] runs only after a successful save. */
-    fun assign(form: RoomAssignForm, rooms: List<Room>, housekeepers: List<StaffUser>, onDone: () -> Unit) {
+    internal fun assign(form: RoomAssignForm, rooms: List<Room>, housekeepers: List<StaffUser>, onDone: () -> Unit) {
         if (_saving.value) return
         val housekeeper = housekeepers.firstOrNull { it.id == form.housekeeperId }
         val knownRoomIds = rooms.map { it.id }.toSet()
