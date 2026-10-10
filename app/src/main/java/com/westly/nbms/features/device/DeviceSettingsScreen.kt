@@ -21,6 +21,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -40,6 +42,7 @@ import com.westly.nbms.core.design.NbmsBadge
 import com.westly.nbms.core.design.NbmsButton
 import com.westly.nbms.core.design.NbmsCard
 import com.westly.nbms.core.design.NbmsIcons
+import com.westly.nbms.core.design.NbmsSwitch
 import com.westly.nbms.core.design.NbmsTextField
 import com.westly.nbms.core.design.PageHeader
 import com.westly.nbms.core.design.ThemeMode
@@ -57,6 +60,11 @@ fun DeviceSettingsScreen(
     val state by vm.state.collectAsState()
     val theme by vm.themeMode.collectAsState()
     val thisDeviceId = vm.thisDeviceId
+    val hasPin by vm.hasPin.collectAsState()
+    val biometricEnabled by vm.biometricEnabled.collectAsState()
+    val biometricBusy by vm.biometricBusy.collectAsState()
+    val activity = LocalContext.current.findFragmentActivity()
+    val biometricAvailable = remember(hasPin) { vm.biometricAvailable() }
 
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         PageHeader(title = "Device Settings", subtitle = "Appearance and security for this phone.")
@@ -113,6 +121,40 @@ fun DeviceSettingsScreen(
                     enabled = state.newPin.isNotEmpty() && state.confirmPin.isNotEmpty(),
                     modifier = Modifier.fillMaxWidth()
                 )
+            }
+        }
+
+        // Only people whose phone has a Device PIN can use biometrics, and never on a shared device.
+        if (!session.user.usesPin && hasPin) {
+            SettingsCard(
+                "Biometric unlock",
+                "Unlock this phone's lock screen with your fingerprint or other phone biometric. Your PIN always still works."
+            ) {
+                if (!biometricAvailable) {
+                    Text(
+                        MSG_BIOMETRIC_UNAVAILABLE,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            "Use biometrics to unlock",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f)
+                        )
+                        NbmsSwitch(
+                            checked = biometricEnabled,
+                            onCheckedChange = { vm.setBiometric(activity, it) },
+                            enabled = !biometricBusy
+                        )
+                    }
+                }
             }
         }
 

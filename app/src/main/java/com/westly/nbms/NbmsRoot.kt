@@ -182,7 +182,9 @@ private fun AuthHost(screens: List<AuthScreenSpec>) {
             }
 
             override fun back() {
-                navController.popBackStack()
+                // Never pop the first screen. A quick second tap on a back link would otherwise remove the
+                // sign-in page itself, and an empty NavHost draws a blank screen.
+                if (navController.previousBackStackEntry != null) navController.popBackStack()
             }
         }
     }

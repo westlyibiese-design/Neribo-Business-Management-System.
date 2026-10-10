@@ -313,9 +313,22 @@ class HousekeepingServiceImpl internal constructor(
             )
         )
 
-        // 2. Re-read the room: a guest still in the room means occupancy is never touched.
-        val stillOccupied = !(store.getDoc(ROOMS, room.id)?.get("currentBookingId") as? String).isNullOrEmpty()
+        // 2. Re-read the room: a guest still in the room means it can never become Available.
+        val roomDoc = store.getDoc(ROOMS, room.id)
+        val stillOccupied = !(roomDoc?.get("currentBookingId") as? String).isNullOrBlank()
         if (stillOccupied) {
+            // A room with a guest in it can be stuck on "Cleaning" (for example after a manual status change).
+            // Cleaning it must put it back to Occupied, otherwise it keeps showing "Needs Cleaning" for ever.
+            if ((roomDoc?.get("status") as? String) == RoomStatus.CLEANING.key) {
+                try {
+                    roomLogic.updateRoomStatus(room.id, RoomStatus.OCCUPIED)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    roomLogic.updateRoomCleanliness(room.id, Cleanliness.CLEAN)
+                    throw e
+                }
+            }
             roomLogic.updateRoomCleanliness(room.id, Cleanliness.CLEAN)
         } else {
             // 3. Vacated room: Available, then Clean. If Available is refused, still mark it Clean and pass the error on.

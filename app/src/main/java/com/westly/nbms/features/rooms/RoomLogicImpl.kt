@@ -161,7 +161,8 @@ class RoomLogicImpl @Inject constructor(
     ) {
         if (newStatus == RoomStatus.AVAILABLE && !allowOccupiedOverride) {
             val room = store.getRoom(roomId)
-            if (room?.currentBookingId != null) throw IllegalStateException(MSG_ROOM_STILL_OCCUPIED)
+            // A blank id ("") means no guest, exactly like null; Housekeeping already reads it that way.
+            if (!room?.currentBookingId.isNullOrBlank()) throw IllegalStateException(MSG_ROOM_STILL_OCCUPIED)
         }
         val now = clock()
         val firestoreFields = LinkedHashMap<String, Any?>()

@@ -145,6 +145,23 @@ class HousekeepingServiceTest {
         assertEquals(NotificationType.HOUSEKEEPING_TASK_DONE, r.notifier.calls.single().type)
     }
 
+    @Test fun completeTaskOnACleaningRoomThatStillHasAGuestPutsItBackToOccupied() = runTest {
+        val r = Rig()
+        r.store.put("housekeeping_tasks", "t1", "status" to "in_progress")
+        r.store.put("rooms", "r101", "currentBookingId" to "b1", "status" to "cleaning")
+        r.service.completeTask("t1", r101, TEST_ACTOR)
+        // never Available while a guest is in; Occupied replaces the stuck "Cleaning"
+        assertEquals(listOf("status:r101:occupied", "clean:r101:clean"), r.rooms.calls)
+    }
+
+    @Test fun completeTaskTreatsABlankBookingIdAsVacated() = runTest {
+        val r = Rig()
+        r.store.put("housekeeping_tasks", "t1", "status" to "in_progress")
+        r.store.put("rooms", "r101", "currentBookingId" to "", "status" to "cleaning")
+        r.service.completeTask("t1", r101, TEST_ACTOR)
+        assertEquals(listOf("status:r101:available", "clean:r101:clean"), r.rooms.calls)
+    }
+
     @Test fun completeTaskOnVacatedRoomMakesItAvailableThenClean() = runTest {
         val r = Rig()
         r.store.put("housekeeping_tasks", "t1", "status" to "in_progress")

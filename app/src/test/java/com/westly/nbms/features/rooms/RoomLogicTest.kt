@@ -307,6 +307,13 @@ class RoomLogicTest {
     }
 
     @Test
+    fun aBlankBookingIdDoesNotBlockMakingTheRoomAvailable() = runTest {
+        val s = FakeStore().apply { rooms["r1"] = Room(id = "r1", status = "cleaning", currentBookingId = "") }
+        logic(s).updateRoomStatus("r1", RoomStatus.AVAILABLE)
+        assertEquals("available", s.roomUpdates.single().second["status"])
+    }
+
+    @Test
     fun finishingCleaningStillRespectsTheOccupiedGuard() = runTest {
         val s = FakeStore().apply { rooms["r1"] = Room(id = "r1", status = "cleaning", currentBookingId = "b1") }
         try {

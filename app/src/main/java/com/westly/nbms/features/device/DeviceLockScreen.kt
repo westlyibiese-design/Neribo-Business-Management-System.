@@ -23,6 +23,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +41,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -67,6 +70,22 @@ fun DeviceLockScreen(
     val nbms = MaterialTheme.nbms
     val state by vm.state.collectAsState()
     val disabled = state.verifying || state.pausedByServer
+
+    // Fingerprint is an extra way in for people who turned it on; the PIN keypad below always works.
+    val biometricEnabled by vm.biometricEnabled.collectAsState()
+    val hasPin by vm.hasPin.collectAsState()
+    val activity = LocalContext.current.findFragmentActivity()
+    val biometricAvailable = remember(biometricEnabled, hasPin) { vm.biometricAvailable() }
+    val biometricOffered = activity != null && biometricOfferedOnLock(
+        enabled = biometricEnabled,
+        hasPin = hasPin,
+        available = biometricAvailable,
+        pausedByServer = state.pausedByServer
+    )
+    // Ask once when the lock screen appears. A cancel leaves the person here with the keypad and the button.
+    LaunchedEffect(biometricOffered) {
+        if (biometricOffered && activity != null) vm.unlockWithBiometric(activity)
+    }
 
     BoxWithConstraints(
         modifier = modifier
@@ -173,6 +192,33 @@ fun DeviceLockScreen(
                     onDelete = vm::onDelete,
                     onSubmit = vm::submit
                 )
+
+                if (biometricOffered && activity != null) {
+                    Row(
+                        Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .alpha(if (state.biometricBusy || state.verifying) 0.4f else 1f)
+                            .clickable(
+                                enabled = !state.biometricBusy && !state.verifying,
+                                role = Role.Button
+                            ) { vm.unlockWithBiometric(activity) }
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Outlined.Fingerprint,
+                            contentDescription = null,
+                            tint = nbms.drawerPrimary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            "Use fingerprint",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = nbms.drawerPrimary
+                        )
+                    }
+                }
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,

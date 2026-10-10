@@ -1,5 +1,6 @@
 package com.westly.nbms.features.device
 
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.westly.nbms.core.session.SessionManager
@@ -27,6 +28,8 @@ data class DeviceLockUiState(
     val error: String? = null,
     val verifying: Boolean = false,
     val shakeCount: Int = 0,
+    /** The system fingerprint prompt is open. */
+    val biometricBusy: Boolean = false,
     /** Too many wrong PINs: the keypad stays disabled; the person can still log out. */
     val pausedByServer: Boolean = false
 )
@@ -36,11 +39,53 @@ class DeviceLockViewModel @Inject constructor(
     private val api: DeviceApi,
     private val deviceIds: DeviceIdProvider,
     private val controller: DeviceLockControllerImpl,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val biometric: BiometricUnlock
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(DeviceLockUiState())
     val state: StateFlow<DeviceLockUiState> = _state.asStateFlow()
+
+    /** The person turned on biometric unlock on this phone. */
+    val biometricEnabled: StateFlow<Boolean> = controller.biometricEnabled
+
+    /** This phone has a Device PIN for the person. */
+    val hasPin: StateFlow<Boolean> = controller.hasPin
+
+    /** True when the phone has a strong biometric set up right now (checked each time, it can change). */
+    fun biometricAvailable(): Boolean = biometric.isAvailable()
+
+    /**
+     * Unlocks with the phone's fingerprint or other strong biometric. The PIN keypad keeps working either way;
+     * a cancel, a lockout or a failure just leaves the person on the PIN screen.
+     */
+    fun unlockWithBiometric(activity: FragmentActivity) {
+        val s = _state.value
+        if (s.verifying || s.pausedByServer || s.biometricBusy) return
+        if (!controller.biometricEnabled.value || !controller.hasPin.value) return
+        val uid = controller.currentUserId() ?: return
+        _state.update { it.copy(biometricBusy = true, error = null) }
+        viewModelScope.launch {
+            val result = biometric.authenticate(
+                activity = activity,
+                uid = uid,
+                title = BIOMETRIC_PROMPT_TITLE,
+                subtitle = "Confirm it's you to continue"
+            )
+            when (result) {
+                BiometricResult.Success -> {
+                    _state.value = DeviceLockUiState()
+                    controller.onUnlocked()
+                }
+                BiometricResult.Cancelled -> _state.update { it.copy(biometricBusy = false) }
+                BiometricResult.KeyInvalidated -> {
+                    controller.disableBiometric()
+                    _state.update { it.copy(biometricBusy = false, error = MSG_BIOMETRIC_KEY_CHANGED) }
+                }
+                is BiometricResult.Failed -> _state.update { it.copy(biometricBusy = false, error = result.message) }
+            }
+        }
+    }
 
     fun onDigit(c: Char) {
         val s = _state.value

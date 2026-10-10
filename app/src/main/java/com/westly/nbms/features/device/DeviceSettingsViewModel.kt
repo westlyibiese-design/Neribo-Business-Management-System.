@@ -1,5 +1,6 @@
 package com.westly.nbms.features.device
 
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.westly.nbms.core.design.ThemeMode
@@ -45,6 +46,7 @@ class DeviceSettingsViewModel @Inject constructor(
     private val api: DeviceApi,
     private val deviceIds: DeviceIdProvider,
     private val controller: DeviceLockControllerImpl,
+    private val biometric: BiometricUnlock,
     private val themeStore: ThemePreferenceStore,
     private val toast: ToastController,
     sections: Set<@JvmSuppressWildcards DeviceSettingsSection>
@@ -59,6 +61,56 @@ class DeviceSettingsViewModel @Inject constructor(
         themeStore.mode.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ThemeMode.System)
 
     val thisDeviceId: String get() = deviceIds.get()
+
+    /** This phone has a Device PIN for the signed-in person. Biometric unlock is only offered then. */
+    val hasPin: StateFlow<Boolean> = controller.hasPin
+
+    val biometricEnabled: StateFlow<Boolean> = controller.biometricEnabled
+
+    private val _biometricBusy = MutableStateFlow(false)
+    val biometricBusy: StateFlow<Boolean> = _biometricBusy.asStateFlow()
+
+    /** True when the phone has a strong biometric set up right now. */
+    fun biometricAvailable(): Boolean = biometric.isAvailable()
+
+    /** Switch on or off. Turning on asks for the fingerprint once, so only someone who can unlock the phone can enable it. */
+    fun setBiometric(activity: FragmentActivity?, enable: Boolean) {
+        if (_biometricBusy.value) return
+        if (!enable) {
+            controller.disableBiometric()
+            toast.show("You'll use your PIN to unlock this phone.", ToastType.Success, "Biometric unlock off")
+            return
+        }
+        val uid = controller.currentUserId()
+        if (activity == null || uid == null || !controller.hasPin.value) {
+            toast.show("Set a Device PIN on this phone first.", ToastType.Error, "Couldn't turn on")
+            return
+        }
+        _biometricBusy.value = true
+        viewModelScope.launch {
+            try {
+                when (
+                    val result = biometric.authenticate(
+                        activity = activity,
+                        uid = uid,
+                        title = BIOMETRIC_PROMPT_TITLE,
+                        subtitle = "Confirm it's you to turn on biometric unlock"
+                    )
+                ) {
+                    BiometricResult.Success -> {
+                        if (controller.enableBiometric()) {
+                            toast.show("You can now unlock with your fingerprint. Your PIN still works.", ToastType.Success, "Biometric unlock on")
+                        }
+                    }
+                    BiometricResult.Cancelled -> Unit
+                    BiometricResult.KeyInvalidated -> toast.show(MSG_BIOMETRIC_KEY_CHANGED, ToastType.Error, "Couldn't turn on")
+                    is BiometricResult.Failed -> toast.show(result.message, ToastType.Error, "Couldn't turn on")
+                }
+            } finally {
+                _biometricBusy.value = false
+            }
+        }
+    }
 
     init {
         load()

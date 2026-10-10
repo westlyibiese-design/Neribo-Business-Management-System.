@@ -1,12 +1,12 @@
 package com.westly.nbms
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.fragment.app.FragmentActivity
 import com.westly.nbms.core.design.NbmsTheme
 import com.westly.nbms.core.design.ThemeMode
 import com.westly.nbms.core.design.ThemePreferenceStore
@@ -17,8 +17,9 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
+/** A FragmentActivity (still a ComponentActivity) because the system biometric prompt needs one. */
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
 
     @Inject
     lateinit var themeStore: ThemePreferenceStore
