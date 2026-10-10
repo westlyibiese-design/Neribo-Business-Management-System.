@@ -319,5 +319,5 @@ private fun FinishedCard(task: StaffTask) {
 /** "Assigned by {name} · {date-time}" + " · Due {date-time}" when the task has a due time. */
 internal fun myTaskFooterText(task: StaffTask, tz: TimeZone): String = buildString {
     append("Assigned by ${task.assignedByName} · ${Format.dateTime(task.createdAt.toInstant(), tz)}")
-    task.dueAt?.let { append(" · Due ${Format.dateTime(it.toInstant(), tz)}") }
+    task.dueAt?.let { append(" · Due ${Format.dateTime(kotlinx.datetime.Instant.fromEpochSeconds(it.seconds, it.nanoseconds.toLong()), tz)}") }
 }

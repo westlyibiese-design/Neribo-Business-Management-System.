@@ -279,9 +279,9 @@ private fun CancelTaskButton(busy: Boolean, onClick: () -> Unit) {
  */
 internal fun taskFooterText(task: StaffTask, tz: TimeZone): String = buildString {
     append("Assigned by ${task.assignedByName} · ${Format.dateTime(task.createdAt.toInstant(), tz)}")
-    task.dueAt?.let { append(" · Due ${Format.dateTime(it.toInstant(), tz)}") }
+    task.dueAt?.let { append(" · Due ${Format.dateTime(kotlinx.datetime.Instant.fromEpochSeconds(it.seconds, it.nanoseconds.toLong()), tz)}") }
     task.acceptedByName?.takeIf { it.isNotBlank() }?.let { append(" · Accepted by $it") }
     if (task.taskStatus() == TaskStatus.COMPLETED) {
-        task.completedAt?.let { append(" · Completed ${Format.dateTime(it.toInstant(), tz)}") }
+        task.completedAt?.let { append(" · Completed ${Format.dateTime(kotlinx.datetime.Instant.fromEpochSeconds(it.seconds, it.nanoseconds.toLong()), tz)}") }
     }
 }
