@@ -39,14 +39,11 @@ import java.time.Instant
 
 internal const val ROUTE_CHECKIN = "checkin"
 internal const val ROUTE_CHECKOUT = "checkout"
-internal const val ROUTE_ROOM_RESERVATIONS = "room-reservations"
 internal const val ROUTE_MESSAGES = "messages"
 internal const val ROUTE_SALES_NEW = "sales/new"
 internal const val ROUTE_SALES_HISTORY = "sales/history"
 internal const val ROUTE_ORDERS_NEW = "orders/new"
 internal const val ROUTE_ORDERS_HISTORY = "orders/history"
-internal const val ROUTE_HOUSEKEEPING = "housekeeping"
-internal const val ROUTE_MAINTENANCE = "maintenance"
 
 /** Footnote of the Staff and Waiter dashboards. */
 internal const val OWN_ACTIVITY_NOTE = "Amounts here are your own sales activity — revenue counts once the Accountant approves it."
