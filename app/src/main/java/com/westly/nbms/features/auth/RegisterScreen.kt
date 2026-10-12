@@ -80,35 +80,53 @@ fun RegisterScreen(nav: AuthNavigator, vm: RegisterViewModel = hiltViewModel()) 
                         else -> VerifyStep(state, vm)
                     }
                 }
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    NbmsButton(
-                        text = "Back",
-                        onClick = { if (!vm.back()) nav.back() },
-                        modifier = Modifier.weight(1f),
-                        variant = ButtonVariant.Outline,
-                        enabled = !state.submitting
-                    )
-                    if (state.step < 3) {
-                        NbmsButton(text = "Next", onClick = vm::next, modifier = Modifier.weight(1f))
-                    } else if (state.step == 3) {
+                if (state.step < 3) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
                         NbmsButton(
-                            text = "Send verification code",
-                            onClick = vm::submit,
+                            text = "Back",
+                            onClick = { if (!vm.back()) nav.back() },
                             modifier = Modifier.weight(1f),
-                            loading = state.submitting,
+                            variant = ButtonVariant.Outline,
                             enabled = !state.submitting
                         )
-                    } else {
+                        NbmsButton(text = "Next", onClick = vm::next, modifier = Modifier.weight(1f))
+                    }
+                } else {
+                    // Steps 3 and 4 have long labels, so the buttons are stacked at full width
+                    // (main action on top, Back below) and never clip, even with a large phone font.
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        if (state.step == 3) {
+                            NbmsButton(
+                                text = "Send verification code",
+                                onClick = vm::submit,
+                                modifier = Modifier.fillMaxWidth(),
+                                loading = state.submitting,
+                                enabled = !state.submitting
+                            )
+                        } else {
+                            NbmsButton(
+                                text = "Verify and create",
+                                onClick = vm::verifyAndCreate,
+                                modifier = Modifier.fillMaxWidth(),
+                                loading = state.submitting,
+                                enabled = !state.submitting
+                            )
+                        }
                         NbmsButton(
-                            text = "Verify and create",
-                            onClick = vm::verifyAndCreate,
-                            modifier = Modifier.weight(1f),
-                            loading = state.submitting,
+                            text = "Back",
+                            onClick = { if (!vm.back()) nav.back() },
+                            modifier = Modifier.fillMaxWidth(),
+                            variant = ButtonVariant.Outline,
                             enabled = !state.submitting
                         )
                     }
