@@ -106,11 +106,13 @@ class FrontlineMathTest {
     }
 
     @Test fun myTotalsUsesTheBusinessDayNotUtc() {
-        // 00:30 Auckland on 13 Oct is still 12 Oct in UTC.
-        val now = at(auckland, "2026-10-13T08:00:00")
+        // 00:30 Auckland on 13 Oct is 11:30 UTC on 12 Oct, but 14:00 Auckland on 13 Oct is already 01:00 UTC on 13 Oct.
+        // A UTC-based "today" would miss the row; the business day (Auckland) must count it.
+        val now = at(auckland, "2026-10-13T14:00:00")
         val rows = listOf(AmountRow(100.0, at(auckland, "2026-10-13T00:30:00")))
         assertEquals(1 to 100.0, FrontlineMath.myTotals(rows, now, auckland).first)
-        assertEquals(0 to 0.0, FrontlineMath.myTotals(rows, at(lagos, "2026-10-12T08:00:00"), lagos).first)
+        // The same row is 12:30 on 12 Oct in Lagos, so it is not "today" when Lagos is already on 13 Oct.
+        assertEquals(0 to 0.0, FrontlineMath.myTotals(rows, at(lagos, "2026-10-13T08:00:00"), lagos).first)
     }
 
     // ── orderStats ──
