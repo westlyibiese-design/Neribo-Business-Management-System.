@@ -10,19 +10,18 @@ class ManagementDashboardProviderTest {
 
     private val provider = ManagementDashboardProvider()
 
-    @Test fun supportsSuperAdminAndManager() {
+    private val supported = setOf(Role.SUPER_ADMIN, Role.MANAGER, Role.OPERATIONS_MANAGER, Role.ACCOUNTANT)
+
+    @Test fun supportsTheFourManagementRoles() {
         assertTrue(provider.supports(Role.SUPER_ADMIN))
         assertTrue(provider.supports(Role.MANAGER))
+        assertTrue(provider.supports(Role.OPERATIONS_MANAGER))
+        assertTrue(provider.supports(Role.ACCOUNTANT))
     }
 
     @Test fun supportsNoOtherRole() {
-        val others = Role.entries.filter { it != Role.SUPER_ADMIN && it != Role.MANAGER }
-        assertEquals(Role.entries.size - 2, others.size)
-        for (role in others) assertFalse("$role must not be supported in 33A2", provider.supports(role))
-    }
-
-    @Test fun operationsManagerAndAccountantStillFallBackUntil33B() {
-        assertFalse(provider.supports(Role.OPERATIONS_MANAGER))
-        assertFalse(provider.supports(Role.ACCOUNTANT))
+        val others = Role.entries.filter { it !in supported }
+        assertEquals(Role.entries.size - 4, others.size)
+        for (role in others) assertFalse("$role must not be supported by the management provider", provider.supports(role))
     }
 }
