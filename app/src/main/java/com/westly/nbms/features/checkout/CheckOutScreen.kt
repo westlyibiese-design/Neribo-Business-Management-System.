@@ -75,6 +75,7 @@ fun CheckOutScreen(
     val ui by vm.state.collectAsStateWithLifecycle()
     val guests by vm.guests.collectAsStateWithLifecycle()
     val officialTime by vm.checkOutTime.collectAsStateWithLifecycle()
+    val hotel by vm.hotel.collectAsStateWithLifecycle()
     val zone = remember(session.business.timezone) { zoneOrLagos(session.business.timezone) }
     val symbol = session.business.currencySymbol
     val success = ui.success
@@ -97,7 +98,7 @@ fun CheckOutScreen(
                 onShare = {
                     scope.launch {
                         try {
-                            ReceiptSharer.share(context, success.receipt)
+                            ReceiptSharer.share(context, success.receipt.copy(hotel = hotel))
                         } catch (e: CancellationException) {
                             throw e
                         } catch (e: Exception) {

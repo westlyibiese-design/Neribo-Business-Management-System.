@@ -1,215 +1,215 @@
 package com.westly.nbms.features.checkout
 
 import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
-import com.westly.nbms.core.util.Format
-import java.io.OutputStream
 import com.westly.nbms.core.util.Branding
+import com.westly.nbms.core.util.Format
+import com.westly.nbms.features.checkout.ReceiptKit.Glyph
+import java.io.OutputStream
 
 /**
- * Draws the guest receipt as an A5 portrait PDF with [PdfDocument]. Navy `#0B1F3A` and gold `#C9A24B`, system
- * sans-serif, 10–12 point text. A long list of extensions simply continues on a second page.
+ * Draws the "Customer Receipt" a guest gets at check-out: a navy header with the hotel wordmark, guest and stay cards,
+ * the charges table with a gold "Total Paid" bar, a green payment box with a QR code, and the hotel's contact footer.
+ * One tall page: its height follows the number of charge rows, so nothing is ever cut or split across pages.
  */
 internal object ReceiptPdfBuilder {
 
-    private const val PAGE_WIDTH = 420
-    private const val PAGE_HEIGHT = 595
-    private const val MARGIN = 32f
-    private const val TOP = 48f
-    private const val BOTTOM = 40f
-    private const val VALUE_X = 140f
-
-    private const val NAVY = 0xFF0B1F3A.toInt()
-    private const val GOLD = 0xFFC9A24B.toInt()
-    private const val INK = 0xFF1F2937.toInt()
-    private const val GREY = 0xFF6B7280.toInt()
-    private const val LIGHT = 0xFFD1D5DB.toInt()
+    private const val HEADER_H = 136f
+    private const val GAP = 18f
+    private const val CARD_H = 142f
+    private const val TABLE_HEAD_H = 28f
+    private const val ROW_H = 38f
+    private const val TOTAL_H = 42f
+    private const val PAY_H = 100f
+    private const val BOTTOM_H = 36f
+    private const val CONTACT_X = 252f
+    private const val CONTACT_W = 184f
+    private const val THANKS_W = 190f
 
     /** Writes the PDF to [out]. The caller closes the stream. */
     fun build(data: ReceiptData, out: OutputStream) {
+        val tops = tops(data)
         val doc = PdfDocument()
         try {
-            val sheet = Sheet(doc)
-            sheet.newPage()
-            draw(sheet, data)
-            sheet.finish()
+            val info = PdfDocument.PageInfo.Builder(ReceiptKit.W.toInt(), Math.ceil(tops.height.toDouble()).toInt(), 1).create()
+            val page = doc.startPage(info)
+            draw(page.canvas, data, tops)
+            doc.finishPage(page)
             doc.writeTo(out)
         } finally {
             doc.close()
         }
     }
 
-    private fun draw(s: Sheet, d: ReceiptData) {
-        val right = PAGE_WIDTH - MARGIN
-        val full = PAGE_WIDTH - 2 * MARGIN
+    /** The vertical position of every block, worked out once so the page height and the drawing always agree. */
+    private class Tops(
+        val cards: Float,
+        val charges: Float,
+        val table: Float,
+        val rows: Float,
+        val total: Float,
+        val pay: Float,
+        val foot: Float,
+        val footHeight: Float,
+        val height: Float,
+        val contact: List<List<String>>
+    )
 
-        // Business name and the gold rule
-        s.text(fit(d.businessName, paint(16f, true, NAVY), full), MARGIN, paint(16f, true, NAVY))
-        s.y += 8f
-        s.line(MARGIN, right, GOLD, 2f)
-        s.y += 20f
+    private fun tops(d: ReceiptData): Tops {
+        val contactPaint = ReceiptKit.paint(8.5f, false, ReceiptKit.INK)
+        val contact = contactItems(d.hotel).map { ReceiptKit.wrap(it, contactPaint, CONTACT_W - 12f, 2) }
+        val contactHeight = contact.sumOf { it.size } * 12.5f + (contact.size - 1).coerceAtLeast(0) * 5f + 6f
 
-        s.text("GUEST RECEIPT", MARGIN, paint(12f, true, NAVY, spacing = 1.5f))
-        s.y += 6f
-        s.text("Receipt No: ${d.receiptNumber}", MARGIN, paint(10f, false, GREY))
-        s.text("Issued: ${Format.dateTime(d.producedAt, d.zone)}", MARGIN, paint(10f, false, GREY))
-        s.y += 10f
-
-        // Guest and stay
-        s.row("Guest", d.guestName)
-        d.guestPhone?.let { s.row("Phone", it) }
-        s.row("Room", d.roomNumber)
-        d.roomType?.let { s.row("Room type", it) }
-        s.row("Check-in", Format.dateTime(d.checkIn, d.zone))
-        s.row("Check-out", Format.dateTime(d.checkOut, d.zone))
-        d.nights?.let { s.row("Nights", it.toString()) }
-        s.y += 10f
-
-        // Charges
-        s.ensure(40f)
-        val head = paint(10f, true, GREY)
-        s.textRight("AMOUNT", right, head, advance = false)
-        s.text("DESCRIPTION", MARGIN, head)
-        s.y += 2f
-        s.line(MARGIN, right, LIGHT, 1f)
-        s.y += 12f
-
-        val body = paint(11f, false, INK)
-        val note = paint(9f, false, GREY)
-        for (line in d.lines) {
-            s.ensure(if (line.note != null) 30f else 18f)
-            val amountText = Format.currency(line.amount, d.currencySymbol)
-            s.textRight(amountText, right, body, advance = false)
-            s.text(fit(line.label, body, full - 90f), MARGIN, body)
-            if (line.note != null) {
-                s.text(fit(line.note, note, full - 90f), MARGIN, note)
-            }
-            s.y += 4f
-        }
-        s.y += 2f
-        s.line(MARGIN, right, NAVY, 1f)
-        s.y += 14f
-
-        s.ensure(30f)
-        val total = paint(12f, true, NAVY)
-        s.textRight(Format.currency(d.total, d.currencySymbol), right, total, advance = false)
-        s.text("Total", MARGIN, total)
-        s.y += 10f
-
-        s.row("Payment method", d.paymentMethod)
-        s.row("Status", d.paymentStatus, valuePaint = paint(11f, true, NAVY))
-        s.y += 20f
-
-        s.ensure(30f)
-        s.textCentered("Thank you for staying with us.", PAGE_WIDTH / 2f, paint(10f, false, GREY, italic = true))
+        val cards = HEADER_H + GAP
+        val charges = cards + CARD_H + 20f
+        val table = charges + 40f
+        val rows = table + TABLE_HEAD_H
+        val total = rows + d.lines.size * ROW_H + 14f
+        val pay = total + TOTAL_H + GAP
+        val foot = pay + PAY_H + GAP
+        val footHeight = maxOf(74f, contactHeight)
+        val height = foot + footHeight + GAP + BOTTOM_H
+        return Tops(cards, charges, table, rows, total, pay, foot, footHeight, height, contact)
     }
 
-    // ---- Paint and text fitting ----
+    private fun draw(c: Canvas, d: ReceiptData, t: Tops) = with(ReceiptKit) {
+        c.drawColor(WHITE)
+        val right = W - MARGIN
+        val zone = d.zone
 
-    private fun paint(size: Float, bold: Boolean, color: Int, italic: Boolean = false, spacing: Float = 0f): Paint =
-        Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = size
-            this.color = color
-            typeface = Typeface.create(
-                Typeface.SANS_SERIF,
-                when {
-                    bold && italic -> Typeface.BOLD_ITALIC
-                    bold -> Typeface.BOLD
-                    italic -> Typeface.ITALIC
-                    else -> Typeface.NORMAL
+        // ---- Header ----
+        c.header(HEADER_H)
+        c.wordmark(d.businessName, d.hotel.tagline, 150f, 236f, 64f)
+        c.textRight("CUSTOMER RECEIPT", right, 38f, paint(10.5f, true, GOLD, spacing = 1.6f))
+        c.textRight("Receipt No.", right, 62f, paint(8f, false, 0xFFB8C2D4.toInt()))
+        val numberPaint = shrink(d.receiptNumber, paint(15f, true, WHITE), 150f, 10f)
+        c.textRight(fit(d.receiptNumber, numberPaint, 150f), right, 80f, numberPaint)
+        c.hLine(300f, right, 91f, GOLD, 1f)
+        c.textRight("Check Out", right, 106f, paint(8f, false, 0xFFB8C2D4.toInt()))
+        c.textRight(receiptDateTime(d.checkOut, zone), right, 123f, paint(11.5f, true, WHITE))
+
+        // ---- Guest and stay cards ----
+        val colW = (W - 2 * MARGIN - 12f) / 2f
+        val leftX = MARGIN
+        val rightX = MARGIN + colW + 12f
+        val y0 = t.cards
+
+        c.card(leftX, y0, leftX + colW, y0 + CARD_H, 12f, CARD, LIGHT)
+        c.badge(leftX + 30f, y0 + 30f, 17f, NAVY, GOLD, Glyph.PERSON)
+        c.textLeft("Guest Details", leftX + 56f, y0 + 35f, paint(13f, true, NAVY))
+        val namePaint = shrink(d.guestName, paint(16f, true, NAVY, family = android.graphics.Typeface.SERIF), colW - 28f, 10f)
+        c.textLeft(fit(d.guestName, namePaint, colW - 28f), leftX + 14f, y0 + 76f, namePaint)
+        var lineY = y0 + 98f
+        val small = paint(9.5f, false, INK)
+        d.guestPhone?.let {
+            c.textLeft(fit(it, small, colW - 28f), leftX + 14f, lineY, small)
+            lineY += 18f
+        }
+        d.guestEmail?.let {
+            c.textLeft(fit(it, small, colW - 28f), leftX + 14f, lineY, small)
+        }
+
+        c.card(rightX, y0, rightX + colW, y0 + CARD_H, 12f, CARD, LIGHT)
+        c.badge(rightX + 30f, y0 + 30f, 17f, NAVY, GOLD, Glyph.BED)
+        c.textLeft("Stay Details", rightX + 56f, y0 + 35f, paint(13f, true, NAVY))
+        val labelPaint = paint(9f, false, GREY)
+        val valuePaint = paint(9.5f, false, INK)
+        val stay = listOf(
+            "Room Type" to (d.roomType ?: "—"),
+            "Room Number" to d.roomNumber,
+            "Check In" to receiptDateTime(d.checkIn, zone),
+            "Check Out" to receiptDateTime(d.checkOut, zone),
+            "Nights" to (d.nights?.toString() ?: "—")
+        )
+        stay.forEachIndexed { i, (label, value) ->
+            val base = y0 + 64f + i * 17f
+            c.textLeft(label, rightX + 14f, base, labelPaint)
+            c.textLeft(fit(value, valuePaint, colW - 90f - 8f), rightX + 88f, base, valuePaint)
+        }
+
+        // ---- Charges ----
+        c.badge(MARGIN + 17f, t.charges + 17f, 17f, NAVY, GOLD, Glyph.DOC)
+        c.textLeft("Charges", MARGIN + 42f, t.charges + 23f, paint(17f, true, NAVY, family = android.graphics.Typeface.SERIF))
+
+        c.card(MARGIN, t.table, right, t.table + TABLE_HEAD_H, 8f, NAVY)
+        val head = paint(8.5f, true, WHITE, spacing = 0.8f)
+        c.textLeft("DESCRIPTION", MARGIN + 14f, t.table + 18f, head)
+        c.textRight("QTY", 296f, t.table + 18f, head)
+        c.textRight("RATE", 372f, t.table + 18f, head)
+        c.textRight("AMOUNT", right - 12f, t.table + 18f, head)
+
+        val body = paint(11f, true, NAVY)
+        val note = paint(8.5f, false, GREY)
+        val cell = paint(10f, false, INK)
+        val amountPaint = paint(10.5f, true, NAVY)
+        d.lines.forEachIndexed { i, line ->
+            val base = t.rows + i * ROW_H
+            c.textLeft(fit(line.label, body, 200f), MARGIN + 14f, base + 17f, body)
+            line.note?.let { c.textLeft(fit(it, note, 200f), MARGIN + 14f, base + 30f, note) }
+            if (line.qty != null && line.rate != null) {
+                c.textRight(line.qty.toString(), 296f, base + 20f, cell)
+                c.textRight(Format.currency(line.rate, d.currencySymbol), 372f, base + 20f, cell)
+            }
+            c.textRight(Format.currency(line.amount, d.currencySymbol), right - 12f, base + 20f, amountPaint)
+            c.hLine(MARGIN + 14f, right - 12f, base + ROW_H - 1f, LIGHT, 0.8f)
+        }
+
+        // ---- Total bar ----
+        c.card(200f, t.total, right, t.total + TOTAL_H, 8f, GOLD)
+        c.card(204f, t.total, right, t.total + TOTAL_H, 8f, NAVY)
+        c.textLeft("Total Paid", 220f, t.total + 26f, paint(13f, true, WHITE))
+        val totalText = Format.currency(d.total, d.currencySymbol)
+        val totalPaint = shrink(totalText, paint(19f, true, GOLD), 150f, 11f)
+        c.textRight(totalText, right - 14f, t.total + 28f, totalPaint)
+
+        // ---- Payment box ----
+        c.card(MARGIN, t.pay, right, t.pay + PAY_H, 14f, MINT, 0xFFCFE6D8.toInt())
+        c.badge(MARGIN + 30f, t.pay + 30f, 17f, GREEN, WHITE, Glyph.CHECK)
+        c.textLeft("Payment Successful", MARGIN + 56f, t.pay + 35f, paint(14f, true, GREEN))
+        val payLabel = paint(9.5f, true, GREEN)
+        val payValue = paint(9.5f, false, INK)
+        listOf(
+            "Paid with" to d.paymentMethod,
+            "Payment Date" to receiptDateTime(d.producedAt, zone),
+            "Status" to d.paymentStatus
+        ).forEachIndexed { i, (label, value) ->
+            val base = t.pay + 60f + i * 15f
+            c.textLeft(label, MARGIN + 16f, base, payLabel)
+            c.textLeft(fit(value, payValue, 170f), MARGIN + 100f, base, payValue)
+        }
+        c.vLine(330f, t.pay + 14f, t.pay + PAY_H - 14f, 0xFFBBD8C6.toInt(), 1f)
+        c.card(352f, t.pay + 8f, 432f, t.pay + 88f, 8f, WHITE)
+        c.qr(d.receiptNumber, 358f, t.pay + 14f, 68f)
+        c.textCenter("Booking reference", 392f, t.pay + 97f, paint(8f, false, GREEN))
+
+        // ---- Footer: thanks and the hotel's details ----
+        c.vLine(MARGIN + 1.5f, t.foot, t.foot + 60f, GOLD, 3f)
+        var y = t.foot + 12f
+        val thanksPaint = paint(11f, true, NAVY)
+        for (line in wrap("Thank you for choosing ${d.businessName}.", thanksPaint, THANKS_W, 2)) {
+            c.textLeft(line, MARGIN + 12f, y, thanksPaint)
+            y += 14f
+        }
+        c.textLeft("We look forward to welcoming you again.", MARGIN + 12f, y + 2f, paint(8.5f, false, GREY))
+        d.hotel.tagline?.let {
+            val handwriting = shrink(it, script(17f, GOLD), THANKS_W, 11f)
+            c.textLeft(fit(it, handwriting, THANKS_W), MARGIN + 12f, y + 28f, handwriting)
+        }
+
+        if (t.contact.isNotEmpty()) {
+            c.vLine(236f, t.foot, t.foot + t.footHeight, LIGHT, 1f)
+            val contactPaint = paint(8.5f, false, INK)
+            var cy = t.foot + 10f
+            for (lines in t.contact) {
+                c.dot(CONTACT_X + 3f, cy - 3f)
+                for (text in lines) {
+                    c.textLeft(text, CONTACT_X + 14f, cy, contactPaint)
+                    cy += 12.5f
                 }
-            )
-            letterSpacing = spacing / size
-        }
-
-    /** Cuts [text] with "…" so it fits in [maxWidth]. */
-    private fun fit(text: String, paint: Paint, maxWidth: Float): String {
-        if (paint.measureText(text) <= maxWidth) return text
-        var end = text.length
-        while (end > 1 && paint.measureText(text.substring(0, end) + "…") > maxWidth) end--
-        return text.substring(0, end) + "…"
-    }
-
-    /** The page being drawn, with a moving line position and page breaks. */
-    private class Sheet(private val doc: PdfDocument) {
-        private var number = 0
-        private var page: PdfDocument.Page? = null
-        private var canvas: Canvas? = null
-        var y = TOP
-
-        fun newPage() {
-            page?.let {
-                drawCopyright()
-                doc.finishPage(it)
+                cy += 5f
             }
-            number++
-            val info = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, number).create()
-            val p = doc.startPage(info)
-            page = p
-            canvas = p.canvas
-            y = TOP
         }
 
-        fun finish() {
-            page?.let {
-                drawCopyright()
-                doc.finishPage(it)
-            }
-            page = null
-        }
-
-        /** The copyright line, centred at the bottom of every page. */
-        private fun drawCopyright() {
-            textCentered(Branding.COPYRIGHT, PAGE_WIDTH / 2f, paint(9f, false, GREY), baseline = PAGE_HEIGHT - 18f)
-        }
-
-        fun ensure(height: Float) {
-            if (y + height > PAGE_HEIGHT - BOTTOM) newPage()
-        }
-
-        /** Draws one line of text at the current position and moves down. */
-        fun text(text: String, x: Float, paint: Paint) {
-            ensure(paint.textSize + 6f)
-            y += paint.textSize
-            canvas?.drawText(text, x, y, paint)
-            y += 5f
-        }
-
-        /** Draws right-aligned text; with [advance] false the position stays so a left label can share the line. */
-        fun textRight(text: String, rightX: Float, paint: Paint, advance: Boolean) {
-            val baseline = y + paint.textSize
-            canvas?.drawText(text, rightX - paint.measureText(text), baseline, paint)
-            if (advance) y = baseline + 5f
-        }
-
-        fun textCentered(text: String, centerX: Float, paint: Paint, baseline: Float? = null) {
-            if (baseline != null) {
-                canvas?.drawText(text, centerX - paint.measureText(text) / 2f, baseline, paint)
-                return
-            }
-            y += paint.textSize
-            canvas?.drawText(text, centerX - paint.measureText(text) / 2f, y, paint)
-            y += 5f
-        }
-
-        fun line(fromX: Float, toX: Float, color: Int, width: Float) {
-            val p = Paint().apply {
-                this.color = color
-                strokeWidth = width
-            }
-            canvas?.drawLine(fromX, y, toX, y, p)
-        }
-
-        /** A grey label on the left and a value that starts at a fixed column. */
-        fun row(label: String, value: String, valuePaint: Paint = paint(11f, false, INK)) {
-            ensure(valuePaint.textSize + 8f)
-            val labelPaint = paint(10f, false, GREY)
-            y += valuePaint.textSize
-            canvas?.drawText(label, MARGIN, y, labelPaint)
-            canvas?.drawText(fit(value, valuePaint, PAGE_WIDTH - MARGIN - VALUE_X), VALUE_X, y, valuePaint)
-            y += 5f
-        }
+        c.footerBar(t.height - BOTTOM_H, BOTTOM_H, Branding.COPYRIGHT)
     }
 }

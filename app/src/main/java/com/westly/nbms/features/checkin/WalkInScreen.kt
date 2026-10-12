@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Login
 import androidx.compose.material.icons.outlined.PersonAdd
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -24,6 +25,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -55,8 +58,13 @@ import com.westly.nbms.core.design.nbms
 import com.westly.nbms.core.design.nbmsPageTitleStyle
 import com.westly.nbms.core.session.SessionState
 import com.westly.nbms.core.util.Format
+import com.westly.nbms.features.checkout.ReceiptSharer
 import com.westly.nbms.features.rooms.Room
 import com.westly.nbms.features.rooms.RoomSearchSelect
+
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
 
 private val TABLET_WIDTH = 600.dp
 private val OrangeDue = Color(0xFFEA580C)
@@ -79,6 +87,9 @@ fun WalkInScreen(
     val checkOutTime by vm.checkOutTime.collectAsStateWithLifecycle()
     val symbol = session.business.currencySymbol
     val success = ui.success
+    val hotel by vm.hotel.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     BoxWithConstraints(modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
         val wide = maxWidth >= TABLET_WIDTH
@@ -94,6 +105,25 @@ fun WalkInScreen(
                     symbol = symbol,
                     zoneId = session.business.timezone,
                     usesPin = session.user.usesPin,
+                    onShareReceipt = {
+                        scope.launch {
+                            try {
+                                val receipt = buildCheckInReceipt(
+                                    success = success,
+                                    businessName = session.business.name,
+                                    currencySymbol = symbol,
+                                    zone = zoneOrLagos(session.business.timezone),
+                                    issuedAt = Clock.System.now(),
+                                    hotel = hotel
+                                )
+                                ReceiptSharer.shareCheckIn(context, receipt)
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                vm.receiptFailed()
+                            }
+                        }
+                    },
                     onRegisterAnother = vm::registerAnother
                 )
             } else {
@@ -410,6 +440,7 @@ private fun SuccessPanel(
     symbol: String,
     zoneId: String,
     usesPin: Boolean,
+    onShareReceipt: () -> Unit,
     onRegisterAnother: () -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -480,6 +511,13 @@ private fun SuccessPanel(
             }
 
             Spacer(Modifier.height(4.dp))
+            NbmsButton(
+                text = "Share Stay Receipt",
+                onClick = onShareReceipt,
+                modifier = Modifier.fillMaxWidth(),
+                variant = ButtonVariant.Outline,
+                leadingIcon = Icons.Outlined.Share
+            )
             if (usesPin) {
                 Text(
                     PIN_ENDING_TEXT,

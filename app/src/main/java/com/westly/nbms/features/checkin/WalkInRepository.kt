@@ -217,7 +217,14 @@ class WalkInRepository @Inject constructor(
                     roomNumber = room.number,
                     checkOut = stay.checkOut,
                     paidNow = payAtCheckIn,
-                    total = stayTotal(room.price, stay.nights)
+                    total = stayTotal(room.price, stay.nights),
+                    guestPhone = form.phone.trim().takeIf { it.isNotEmpty() },
+                    guestEmail = form.email.trim().takeIf { it.isNotEmpty() },
+                    roomType = room.type,
+                    checkIn = stay.checkIn,
+                    nights = stay.nights,
+                    bookingCode = bookingCode(writes.ids.bookingId),
+                    paymentMethodLabel = if (payAtCheckIn) form.paymentMethod.label else null
                 )
             )
         } catch (e: TimeoutCancellationException) {

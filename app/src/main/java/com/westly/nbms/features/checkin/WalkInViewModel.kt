@@ -8,6 +8,10 @@ import com.westly.nbms.core.design.ToastController
 import com.westly.nbms.core.design.ToastType
 import com.westly.nbms.core.session.SessionManager
 import com.westly.nbms.core.session.SessionState
+import com.westly.nbms.features.checkout.MSG_RECEIPT_FAILED
+import com.westly.nbms.features.checkout.ReceiptHotel
+import com.westly.nbms.features.checkout.TITLE_RECEIPT_FAILED
+import com.westly.nbms.features.checkout.observeReceiptHotel
 import com.westly.nbms.features.rooms.Room
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -76,8 +80,17 @@ class WalkInViewModel @Inject constructor(
         .catch { emit(DEFAULT_CHECK_OUT_TIME) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DEFAULT_CHECK_OUT_TIME)
 
+    /** Live hotel details (tagline, phone, email, address, website) printed on the stay receipt. */
+    val hotel: StateFlow<ReceiptHotel> = firestore.observeReceiptHotel()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ReceiptHotel())
+
     /** The synchronous "one submit at a time" flag; a second tap can never get past it. */
     private val inFlight = AtomicBoolean(false)
+
+    /** The stay receipt could not be made or shared. */
+    fun receiptFailed() {
+        toast.show(MSG_RECEIPT_FAILED, ToastType.Error, TITLE_RECEIPT_FAILED)
+    }
 
     // ---- form changes ----
 

@@ -72,7 +72,15 @@ data class WalkInSuccess(
     val roomNumber: String,
     val checkOut: Instant,
     val paidNow: Boolean,
-    val total: Double
+    val total: Double,
+    // Used by the stay receipt; every one has a default so older callers keep working.
+    val guestPhone: String? = null,
+    val guestEmail: String? = null,
+    val roomType: String? = null,
+    val checkIn: Instant? = null,
+    val nights: Int = 1,
+    val bookingCode: String? = null,
+    val paymentMethodLabel: String? = null
 )
 
 /** The four new document ids of one walk-in. The booking id is also the id of its `booking_dates` lock. */

@@ -86,6 +86,10 @@ class CheckOutViewModel @Inject constructor(
         .catch { emit(DEFAULT_CHECK_OUT_TIME) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DEFAULT_CHECK_OUT_TIME)
 
+    /** Live hotel details (tagline, phone, email, address, website) printed on the guest receipt. */
+    val hotel: StateFlow<ReceiptHotel> = firestore.observeReceiptHotel()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ReceiptHotel())
+
     /** The synchronous "one check-out at a time" flag; a second tap can never get past it. */
     private val inFlight = AtomicBoolean(false)
 

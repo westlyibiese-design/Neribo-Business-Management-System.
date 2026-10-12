@@ -139,6 +139,7 @@ private fun SettingsFormContent(
                 NbmsTextField(f.phone, { v -> onEdit { it.copy(phone = v) } }, "Phone", Modifier.fillMaxWidth(), keyboardType = KeyboardType.Phone)
                 NbmsTextField(f.email, { v -> onEdit { it.copy(email = v) } }, "Email", Modifier.fillMaxWidth(), keyboardType = KeyboardType.Email, error = errors.email)
                 NbmsTextField(f.address, { v -> onEdit { it.copy(address = v) } }, "Address", Modifier.fillMaxWidth())
+                NbmsTextField(f.website, { v -> onEdit { it.copy(website = v) } }, "Website", Modifier.fillMaxWidth(), keyboardType = KeyboardType.Uri)
             }
         }
 

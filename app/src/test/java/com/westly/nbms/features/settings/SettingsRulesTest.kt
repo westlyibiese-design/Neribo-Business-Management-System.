@@ -105,7 +105,7 @@ class SettingsRulesTest {
         assertEquals("https://i", social["instagram"])
         assertEquals(
             setOf(
-                "hotelName", "tagline", "phone", "email", "address", "currency", "checkInTime", "checkOutTime",
+                "hotelName", "tagline", "phone", "email", "address", "website", "currency", "checkInTime", "checkOutTime",
                 "timezone", "housekeepingLeadTimeMinutes", "occupiedStayServiceTime", "occupiedStayServiceEnabled",
                 "socialLinks", "updatedAt", "updatedBy"
             ),

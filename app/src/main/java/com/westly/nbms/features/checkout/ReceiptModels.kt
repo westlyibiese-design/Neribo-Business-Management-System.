@@ -1,12 +1,56 @@
 package com.westly.nbms.features.checkout
 
+import com.westly.nbms.core.data.BusinessFirestore
+import com.westly.nbms.core.data.Resource
 import com.westly.nbms.core.util.Format
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.daysUntil
 
 /** One row of the charges table on the receipt. [note] is a small grey line under the label. */
-data class ReceiptLine(val label: String, val amount: Double, val note: String? = null)
+data class ReceiptLine(
+    val label: String,
+    val amount: Double,
+    val note: String? = null,
+    /** Shown in the QTY and RATE columns when both are known (rate is the price of one unit). */
+    val qty: Int? = null,
+    val rate: Double? = null
+)
+
+/** The hotel details printed on both receipts. Every field is optional; a blank one is simply left off. */
+data class ReceiptHotel(
+    val tagline: String? = null,
+    val phone: String? = null,
+    val email: String? = null,
+    val address: String? = null,
+    val website: String? = null
+)
+
+/** `settings/hotel` as the receipts read it: only the contact fields (a private copy, like the other pages do). */
+data class ReceiptHotelDoc(
+    val tagline: String = "",
+    val phone: String = "",
+    val email: String = "",
+    val address: String = "",
+    val website: String = ""
+) {
+    fun toReceiptHotel(): ReceiptHotel = ReceiptHotel(
+        tagline = tagline.orNullIfBlank(),
+        phone = phone.orNullIfBlank(),
+        email = email.orNullIfBlank(),
+        address = address.orNullIfBlank(),
+        website = website.orNullIfBlank()
+    )
+}
+
+/** Live hotel details for the receipts; an empty [ReceiptHotel] until they load or if they cannot be read. */
+internal fun BusinessFirestore.observeReceiptHotel(): Flow<ReceiptHotel> =
+    observeDoc("settings", "hotel", ReceiptHotelDoc::class.java)
+        .map { r -> if (r is Resource.Success) (r.data?.toReceiptHotel() ?: ReceiptHotel()) else ReceiptHotel() }
+        .catch { emit(ReceiptHotel()) }
 
 /** Everything the guest receipt PDF shows. Times are shown in [zone]. */
 data class ReceiptData(
@@ -25,7 +69,9 @@ data class ReceiptData(
     val lines: List<ReceiptLine>,
     val total: Double,
     val paymentMethod: String,
-    val paymentStatus: String
+    val paymentStatus: String,
+    val guestEmail: String? = null,
+    val hotel: ReceiptHotel = ReceiptHotel()
 )
 
 /** The booking's own code, or the first 8 characters of its document id; always in capitals. */
@@ -51,7 +97,8 @@ internal fun buildReceipt(
     businessName: String,
     currencySymbol: String,
     zone: TimeZone,
-    producedAt: Instant
+    producedAt: Instant,
+    hotel: ReceiptHotel = ReceiptHotel()
 ): ReceiptData {
     val extensionTotal = live.extensions.sumOf { it.amount }
     val extensionNights = live.extensions.sumOf { it.nightsAdded }
@@ -68,17 +115,28 @@ internal fun buildReceipt(
     val roomNights = nights?.let { (it - extensionNights).coerceAtLeast(0) }
 
     val lines = buildList {
-        add(ReceiptLine("Room charges", roomCharges, roomNights?.takeIf { it > 0 }?.let { nightsText(it) }))
+        val billedNights = roomNights?.takeIf { it > 0 }
+        add(
+            ReceiptLine(
+                label = "Room charges",
+                amount = roomCharges,
+                note = billedNights?.let { nightsText(it) },
+                qty = billedNights,
+                rate = billedNights?.let { roomCharges / it }
+            )
+        )
         for (e in live.extensions) {
             add(
                 ReceiptLine(
                     label = "Extension (+${nightsText(e.nightsAdded)})",
                     amount = e.amount,
-                    note = e.newCheckOut?.let { "Until ${Format.date(it, zone)}" }
+                    note = e.newCheckOut?.let { "Until ${Format.date(it, zone)}" },
+                    qty = e.nightsAdded.takeIf { it > 0 },
+                    rate = e.nightsAdded.takeIf { it > 0 }?.let { e.amount / it }
                 )
             )
         }
-        if (summary.extraCharges > 0.0) add(ReceiptLine("Extra charges", summary.extraCharges))
+        if (summary.extraCharges > 0.0) add(ReceiptLine("Extra charges", summary.extraCharges, qty = 1, rate = summary.extraCharges))
     }
 
     return ReceiptData(
@@ -97,6 +155,8 @@ internal fun buildReceipt(
         lines = lines,
         total = summary.finalAmount,
         paymentMethod = methodLabel(summary.paymentMethodKey),
-        paymentStatus = "PAID"
+        paymentStatus = "PAID",
+        guestEmail = live.guestEmail.orNullIfBlank(),
+        hotel = hotel
     )
 }

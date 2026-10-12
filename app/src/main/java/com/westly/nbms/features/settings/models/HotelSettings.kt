@@ -15,6 +15,7 @@ data class HotelSettings(
     val phone: String = "",
     val email: String = "",
     val address: String = "",
+    val website: String = "",
     val currency: String = "NGN",
     val checkInTime: String = "14:00",
     val checkOutTime: String = "11:00",
