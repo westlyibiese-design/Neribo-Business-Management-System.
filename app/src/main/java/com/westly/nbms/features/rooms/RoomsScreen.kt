@@ -66,6 +66,9 @@ internal fun gridColumns(widthDp: Float): Int = when {
     else -> 1
 }
 
+/** How many room cards are drawn at first, and how many more each "Show more" tap adds. Keeps 300+ rooms from freezing the phone. */
+internal const val ROOMS_PAGE_SIZE = 20
+
 /** Rooms: a card grid with status filter chips. Only the Super Admin can add, edit, delete or change status. */
 @Composable
 fun RoomsScreen(
@@ -82,6 +85,8 @@ fun RoomsScreen(
     var showForm by rememberSaveable { mutableStateOf(false) }
     var editingId by rememberSaveable { mutableStateOf<String?>(null) }
     var deleteId by rememberSaveable { mutableStateOf<String?>(null) }
+    // Starts again at one page whenever another status chip is chosen.
+    var shownCount by rememberSaveable(filter) { mutableStateOf(ROOMS_PAGE_SIZE) }
 
     val loaded: List<Room> = when (val r = rooms) {
         is Resource.Success -> r.data
@@ -124,8 +129,9 @@ fun RoomsScreen(
                 } else {
                     BoxWithConstraints(Modifier.fillMaxWidth()) {
                         val columns = gridColumns(maxWidth.value)
+                        val shown = visible.take(shownCount)
                         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                            visible.chunked(columns).forEach { rowRooms ->
+                            shown.chunked(columns).forEach { rowRooms ->
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                                     rowRooms.forEach { room ->
                                         Box(Modifier.weight(1f)) {
@@ -142,6 +148,23 @@ fun RoomsScreen(
                                         }
                                     }
                                     repeat(columns - rowRooms.size) { Spacer(Modifier.weight(1f)) }
+                                }
+                            }
+                            if (visible.size > shown.size) {
+                                Column(
+                                    Modifier.fillMaxWidth(),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        "Showing ${shown.size} of ${visible.size} rooms",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    NbmsButton(
+                                        text = "Show ${minOf(ROOMS_PAGE_SIZE, visible.size - shown.size)} more",
+                                        onClick = { shownCount += ROOMS_PAGE_SIZE }
+                                    )
                                 }
                             }
                         }
