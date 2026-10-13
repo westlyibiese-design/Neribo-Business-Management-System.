@@ -136,11 +136,12 @@ class ExtendStayRepositoryTest {
         assertTrue(roomLogic.checks.isEmpty())
     }
 
-    @Test fun offlineIsRefused() = runTest {
+    @Test fun offlineExtendIsStillSavedOnThePhone() = runTest {
+        // Extend stay works offline now: the store queues the writes and they upload when the internet returns.
         network.online = false
-        val r = extend() as ExtendResult.Rejected
-        assertEquals("You're Offline", r.title)
-        assertEquals("No internet connection detected. Please reconnect and try again.", r.message)
+        val r = extend()
+        assertTrue(r is ExtendResult.Done)
+        assertEquals(1, store.commits.size)
     }
 
     @Test fun lessThanOneNightIsRefused() = runTest {

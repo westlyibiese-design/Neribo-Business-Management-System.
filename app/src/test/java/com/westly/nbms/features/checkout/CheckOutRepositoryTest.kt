@@ -73,12 +73,12 @@ class CheckOutRepositoryTest {
         assertEquals(at("2026-10-12T09:30:00Z"), receipt.producedAt)
     }
 
-    @Test fun offlineStopsFirst() = runTest {
+    @Test fun offlineCheckOutIsStillSavedOnThePhone() = runTest {
+        // Check-out works offline now: the store queues the writes and they upload when the internet returns.
         network.online = false
-        val r = checkOut() as CheckOutResult.Rejected
-        assertEquals("You're Offline", r.title)
-        assertEquals("No internet connection detected. Please reconnect and try again.", r.message)
-        assertTrue(store.commits.isEmpty())
+        val r = checkOut()
+        assertTrue(r is CheckOutResult.Done)
+        assertEquals(1, store.commits.size)
     }
 
     @Test fun missingDateIsRefused() = runTest {
