@@ -1,5 +1,7 @@
 package com.westly.nbms.features.shifts
 
+import com.westly.nbms.core.data.readSource
+import com.westly.nbms.core.sync.awaitWrite
 import com.google.firebase.firestore.FieldValue
 import com.westly.nbms.core.audit.AuditLogger
 import com.westly.nbms.core.data.BusinessFirestore
@@ -42,10 +44,10 @@ class FirestoreShiftsStore(private val firestore: BusinessFirestore) : ShiftsSto
         }
 
     override suspend fun byStaff(staffId: String): List<Shift> =
-        firestore.collection(SHIFTS_COLLECTION).whereEqualTo("staffId", staffId).get().await().toObjects(Shift::class.java)
+        firestore.collection(SHIFTS_COLLECTION).whereEqualTo("staffId", staffId).get(readSource()).await().toObjects(Shift::class.java)
 
     override suspend fun bySeries(seriesId: String): List<Shift> =
-        firestore.collection(SHIFTS_COLLECTION).whereEqualTo("seriesId", seriesId).get().await().toObjects(Shift::class.java)
+        firestore.collection(SHIFTS_COLLECTION).whereEqualTo("seriesId", seriesId).get(readSource()).await().toObjects(Shift::class.java)
 
     override suspend fun createBatch(docs: List<Map<String, Any?>>): List<String> {
         val col = firestore.collection(SHIFTS_COLLECTION)
@@ -55,7 +57,7 @@ class FirestoreShiftsStore(private val firestore: BusinessFirestore) : ShiftsSto
             batch.set(ref, resolveShiftValues(fields))
             ref.id
         }
-        batch.commit().await()
+        batch.commit().awaitWrite("Shift change")
         return ids
     }
 
@@ -68,7 +70,7 @@ class FirestoreShiftsStore(private val firestore: BusinessFirestore) : ShiftsSto
         val batch = col.firestore.batch()
         val resolved = resolveShiftValues(fields)
         ids.forEach { batch.update(col.document(it), resolved) }
-        batch.commit().await()
+        batch.commit().awaitWrite("Shift change")
     }
 }
 

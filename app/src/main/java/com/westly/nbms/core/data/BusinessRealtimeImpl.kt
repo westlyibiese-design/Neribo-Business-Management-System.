@@ -1,5 +1,6 @@
 package com.westly.nbms.core.data
 
+import com.westly.nbms.core.sync.awaitWrite
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
@@ -100,14 +101,14 @@ class BusinessRealtimeImpl @Inject constructor(
     }
 
     override suspend fun set(path: String, value: Any?) {
-        ref(path).setValue(value).await()
+        ref(path).setValue(value).awaitWrite("Live status")
     }
 
     override suspend fun update(path: String, fields: Map<String, Any?>) {
-        ref(path).updateChildren(fields).await()
+        ref(path).updateChildren(fields).awaitWrite("Live status")
     }
 
     override suspend fun increment(path: String, delta: Long) {
-        ref(path).setValue(ServerValue.increment(delta)).await()
+        ref(path).setValue(ServerValue.increment(delta)).awaitWrite("Live status")
     }
 }

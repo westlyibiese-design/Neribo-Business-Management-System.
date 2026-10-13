@@ -44,7 +44,7 @@ class FirestoreDrinksStore(
 
     override suspend fun save(change: DrinkChange) {
         try {
-            firestore.runTransaction { tx, fs ->
+            firestore.runTx { tx, fs ->
                 val ref = fs.doc(BAR_MENU_COLLECTION, BAR_MENU_DOC_ID)
                 val snap = tx.get(ref)
                 // The LIVE array, read inside the transaction (not what is on the screen).

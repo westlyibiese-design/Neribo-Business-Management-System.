@@ -45,7 +45,7 @@ class FirestoreMenuStore @Inject constructor(
 
     override suspend fun save(change: MenuChange) {
         try {
-            firestore.runTransaction { tx, fs ->
+            firestore.runTx { tx, fs ->
                 val ref = fs.doc(MENU_COLLECTION, MENU_DOC_ID)
                 val snap = tx.get(ref)
                 // The LIVE array, read inside the transaction (not what is on the screen).

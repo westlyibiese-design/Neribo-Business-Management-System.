@@ -135,23 +135,15 @@ class ReservationCheckInFlowTest {
 
     // ---- Checks before the service ---------------------------------------------------------------
 
-    @Test fun offlineToastAndTheServiceIsNotCalled() = runTest {
+    @Test fun offlineCheckInIsStillSentToTheServiceAndNoOfflineToastIsShown() = runTest {
+        // Check-in works offline now: the service saves it on the phone and it uploads when the internet returns.
         val toasts = collectToasts(toast)
         network.online = false
         val vm = viewModel()
         vm.openCheckIn(resBooking())
         vm.submitCheckIn()
-        assertEquals(1, toasts.size)
-        assertEquals("You're Offline", toasts[0].title)
-        assertEquals("No internet connection detected. Please reconnect and try again.", toasts[0].message)
-        assertEquals(ToastType.Error, toasts[0].type)
-        assertTrue(service.checkInCalls.isEmpty())
-        assertFalse(vm.checkIn.value.busy)
-
-        // the guard was released: once online, the next tap goes through
-        network.online = true
-        vm.submitCheckIn()
         assertEquals(1, service.checkInCalls.size)
+        assertTrue(toasts.none { it.title == "You're Offline" })
     }
 
     @Test fun invalidDateToastAndTheServiceIsNotCalled() = runTest {

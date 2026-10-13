@@ -46,7 +46,7 @@ class FirestoreOrdersStore @Inject constructor(
 
     override suspend fun createOrder(payload: Map<String, Any?>): String {
         val orderId = firestore.collection(ORDERS_COLLECTION).document().id
-        firestore.runTransaction { tx, fs ->
+        firestore.runTx { tx, fs ->
             tx.set(fs.doc(ORDERS_COLLECTION, orderId), payload.resolveOrderServerTime())
             Unit
         }

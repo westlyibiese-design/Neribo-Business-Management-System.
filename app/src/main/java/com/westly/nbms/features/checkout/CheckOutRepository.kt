@@ -77,7 +77,7 @@ class FirestoreCheckOutStore @Inject constructor(
 
     override suspend fun commit(bookingDocId: String, build: (LiveBooking) -> CheckOutWrites): CheckOutCommit {
         try {
-            return firestore.runTransaction { tx, fs ->
+            return firestore.runTx { tx, fs ->
                 // All reads first, then the writes.
                 val bookingRef = fs.doc("bookings", bookingDocId)
                 val snap = tx.get(bookingRef)
@@ -157,8 +157,6 @@ class CheckOutRepository @Inject constructor(
      * Never throws (except cancellation): a problem comes back as [CheckOutResult.Rejected].
      */
     suspend fun checkOut(booking: Booking, input: CheckOutInput): CheckOutResult {
-        if (!network.isOnline()) return CheckOutResult.Rejected(TITLE_OFFLINE, MSG_OFFLINE)
-
         val actual = input.actualAt ?: return CheckOutResult.Rejected(TITLE_CHECKOUT_FAILED, MSG_BAD_DATE)
         val checkInAt = (booking.checkInAt ?: booking.checkIn).asInstant()
         if (checkInAt != null && actual < checkInAt) {

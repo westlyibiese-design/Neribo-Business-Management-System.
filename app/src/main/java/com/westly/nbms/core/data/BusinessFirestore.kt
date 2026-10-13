@@ -27,4 +27,12 @@ interface BusinessFirestore {
     suspend fun set(collection: String, id: String, value: Any, merge: Boolean = false)
     suspend fun delete(collection: String, id: String)
     suspend fun <R> runTransaction(block: suspend (Transaction, BusinessFirestore) -> R): R
+
+    /**
+     * Like [runTransaction], but it also works with no internet: offline it reads the phone's saved copy and queues
+     * the writes, which upload by themselves later. Use this for every save that must work offline.
+     * The default only exists so test fakes need no change; the real implementation overrides it.
+     */
+    suspend fun <R> runTx(block: suspend (TxScope, BusinessFirestore) -> R): R =
+        throw UnsupportedOperationException("runTx")
 }

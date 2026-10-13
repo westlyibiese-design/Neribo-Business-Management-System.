@@ -1,5 +1,6 @@
 package com.westly.nbms.features.bookings
 
+import com.westly.nbms.core.sync.awaitWrite
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.SetOptions
 import com.westly.nbms.core.audit.AuditLogger
@@ -40,7 +41,7 @@ class FirestoreBookingStore @Inject constructor(
         val batch = bookingRef.firestore.batch()
         batch.update(bookingRef, bookingFields.mapValues { (_, v) -> if (v === ServerTime) FieldValue.serverTimestamp() else v })
         batch.set(lockRef, lockFields, SetOptions.merge())
-        batch.commit().await()
+        batch.commit().awaitWrite("Booking change")
     }
 }
 

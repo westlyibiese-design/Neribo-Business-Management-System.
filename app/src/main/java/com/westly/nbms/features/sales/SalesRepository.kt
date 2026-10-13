@@ -68,13 +68,15 @@ class FirestoreSalesStore @Inject constructor(
     override suspend fun <R> inTransaction(block: (SaleTx, String) -> R): Pair<String, R> {
         val saleId = firestore.collection("sales").document().id
         try {
-            val result = firestore.runTransaction { tx, fs ->
+            val result = firestore.runTx { tx, fs ->
+                // What each item held when read; the save adds the DIFFERENCE, so two phones selling offline both count.
+                val readQuantity = mutableMapOf<String, Int>()
                 val real = object : SaleTx {
                     override fun readItem(itemId: String): StockRead? {
                         val snap = tx.get(fs.doc("inventory", itemId))
                         if (!snap.exists() || snap.getBoolean("isDeleted") == true) return null
                         return StockRead(
-                            quantity = snap.getLong("quantity")?.toInt() ?: 0,
+                            quantity = (snap.getLong("quantity")?.toInt() ?: 0).also { readQuantity[itemId] = it },
                             minStock = snap.getLong("minStock")?.toInt() ?: 0,
                             unit = snap.getString("unit")
                         )
@@ -83,7 +85,10 @@ class FirestoreSalesStore @Inject constructor(
                     override fun writeStock(itemId: String, newQuantity: Int) {
                         tx.update(
                             fs.doc("inventory", itemId),
-                            mapOf("quantity" to newQuantity, "updatedAt" to FieldValue.serverTimestamp())
+                            mapOf(
+                                "quantity" to FieldValue.increment((newQuantity - (readQuantity[itemId] ?: newQuantity)).toLong()),
+                                "updatedAt" to FieldValue.serverTimestamp()
+                            )
                         )
                     }
 

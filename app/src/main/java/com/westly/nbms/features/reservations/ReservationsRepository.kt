@@ -1,5 +1,7 @@
 package com.westly.nbms.features.reservations
 
+import com.westly.nbms.core.data.readSource
+import com.westly.nbms.core.sync.awaitWrite
 import android.util.Log
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.SetOptions
@@ -49,7 +51,7 @@ class ReservationsRepository @Inject constructor(
 
     override suspend fun loadCheckOutTime(): String = try {
         withTimeoutOrNull(SETTINGS_TIMEOUT_MS) {
-            normalizeCheckOutTime(firestore.doc("settings", "hotel").get().await().getString("checkOutTime"))
+            normalizeCheckOutTime(firestore.doc("settings", "hotel").get(readSource()).await().getString("checkOutTime"))
         } ?: DEFAULT_OFFICIAL_CHECK_OUT
     } catch (e: CancellationException) {
         throw e
@@ -74,7 +76,7 @@ class ReservationsRepository @Inject constructor(
             val batch = bookingRef.firestore.batch()
             batch.update(bookingRef, buildStatusChangeBookingUpdate(newStatus, staffId, staffName, FieldValue.serverTimestamp()))
             batch.set(datesRef, buildStatusChangeBookingDates(booking, newStatus), SetOptions.merge())
-            batch.commit().await()
+            batch.commit().awaitWrite("Booking status change")
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -154,7 +156,7 @@ class ReservationsRepository @Inject constructor(
         val paymentId = if (isPayNow(form)) firestore.collection("payments").document().id else null
 
         try {
-            return firestore.runTransaction { tx, fs ->
+            return firestore.runTx { tx, fs ->
                 val bookingRef = fs.doc("bookings", booking.id)
                 val snap = tx.get(bookingRef)
                 val current = if (snap.exists()) snap.toObject(Booking::class.java) else null

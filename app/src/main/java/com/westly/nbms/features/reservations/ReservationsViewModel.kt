@@ -384,7 +384,7 @@ class ReservationsViewModel @Inject constructor(
         val zone = currentZone()
 
         val check = validateCheckIn(
-            online = network.isOnline(),
+            online = true, // Check-in works offline now: it is saved on the phone and uploads when the internet returns.
             date = st.date,
             time = st.time,
             nights = ReservationRules.nightsPaid(booking),

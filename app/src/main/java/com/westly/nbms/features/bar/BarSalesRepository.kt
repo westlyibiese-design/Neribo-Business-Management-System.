@@ -31,7 +31,7 @@ class FirestoreBarSalesStore(
 
     override suspend fun createSale(payload: Map<String, Any?>): String {
         val saleId = firestore.collection(BAR_ORDERS_COLLECTION).document().id
-        firestore.runTransaction { tx, fs ->
+        firestore.runTx { tx, fs ->
             tx.set(fs.doc(BAR_ORDERS_COLLECTION, saleId), payload.resolveBarSaleServerTime())
             Unit
         }

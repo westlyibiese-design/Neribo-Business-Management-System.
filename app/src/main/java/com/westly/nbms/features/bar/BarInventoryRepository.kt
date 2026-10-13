@@ -37,7 +37,7 @@ class FirestoreBarInventoryStore(
     override suspend fun add(payload: Map<String, Any?>): String {
         val itemId = firestore.collection(BAR_STOCK_PATH).document().id
         try {
-            firestore.runTransaction { tx, fs ->
+            firestore.runTx { tx, fs ->
                 tx.set(fs.doc(BAR_STOCK_PATH, itemId), payload.resolveBarStockTime())
                 Unit
             }
@@ -49,13 +49,13 @@ class FirestoreBarInventoryStore(
 
     override suspend fun restock(itemId: String, amount: Int): RestockResult {
         try {
-            return firestore.runTransaction { tx, fs ->
+            return firestore.runTx { tx, fs ->
                 val ref = fs.doc(BAR_STOCK_PATH, itemId)
                 val snap = tx.get(ref)
                 if (!snap.exists() || snap.getBoolean("isDeleted") == true) throw BarStockException(MSG_BAR_STOCK_ITEM_MISSING)
                 val before = snap.getLong("quantity")?.toInt() ?: 0
                 val after = barRestockedQuantity(before, amount)
-                tx.update(ref, buildBarRestockFields(after).resolveBarStockTime())
+                tx.update(ref, buildBarRestockFields(after).resolveBarStockTime() + ("quantity" to FieldValue.increment((after - before).toLong())))
                 RestockResult(before, after)
             }
         } catch (e: Exception) {

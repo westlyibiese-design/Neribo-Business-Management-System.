@@ -1,5 +1,6 @@
 package com.westly.nbms.features.settings
 
+import com.westly.nbms.core.sync.awaitWrite
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.firestore.FieldValue
@@ -226,7 +227,7 @@ class SystemMaintenanceViewModel @Inject constructor(
                     db.collection("businesses").document(signedIn.business.id),
                     businessMaintenanceFields(f)
                 )
-                batch.commit().await()
+                batch.commit().awaitWrite("Maintenance setting")
                 audit.log(
                     "maintenance_mode_updated", "settings", "maintenance",
                     mapOf("target" to safeTarget(previousTarget)), mapOf("target" to f.target)

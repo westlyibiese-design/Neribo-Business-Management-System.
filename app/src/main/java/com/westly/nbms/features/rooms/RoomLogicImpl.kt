@@ -1,5 +1,6 @@
 package com.westly.nbms.features.rooms
 
+import com.westly.nbms.core.data.readSource
 import android.util.Log
 import com.google.firebase.Timestamp
 import com.westly.nbms.core.data.BusinessFirestore
@@ -54,7 +55,7 @@ class FirestoreRoomLogicStore @Inject constructor(
         val snapshot = firestore.collection("booking_dates")
             .whereEqualTo("roomId", roomId)
             .whereIn("status", statuses)
-            .get()
+            .get(readSource())
             .await()
         return snapshot.documents.map { d ->
             BookingLock(
@@ -68,10 +69,10 @@ class FirestoreRoomLogicStore @Inject constructor(
     }
 
     override suspend fun allRooms(): List<Room> =
-        firestore.collection("rooms").get().await().toObjects(Room::class.java)
+        firestore.collection("rooms").get(readSource()).await().toObjects(Room::class.java)
 
     override suspend fun getRoom(roomId: String): Room? =
-        firestore.doc("rooms", roomId).get().await().toObject(Room::class.java)
+        firestore.doc("rooms", roomId).get(readSource()).await().toObject(Room::class.java)
 
     override suspend fun updateRoom(roomId: String, fields: Map<String, Any?>) {
         firestore.update("rooms", roomId, fields.mapValues { (_, v) -> if (v is Instant) v.toTimestamp() else v })

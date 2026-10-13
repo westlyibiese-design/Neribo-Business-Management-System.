@@ -1,5 +1,7 @@
 package com.westly.nbms.core.archive
 
+import com.westly.nbms.core.data.readSource
+import com.westly.nbms.core.sync.awaitWrite
 import android.util.Log
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -91,7 +93,7 @@ class RecordArchiverImpl @Inject constructor(
                     cleanReason, FieldValue.serverTimestamp()
                 )
             )
-            batch.commit().await()
+            batch.commit().awaitWrite("Archive change")
 
             audit.log("soft_delete", collection, documentId, null, mapOf("reason" to cleanReason))
             for (listener in listeners) {
@@ -116,7 +118,7 @@ class RecordArchiverImpl @Inject constructor(
             val s = signedIn()
             requireSuperAdmin(s)
             val archiveRef = firestore.doc("deleted_records", deletedRecordId)
-            val snap = archiveRef.get().await()
+            val snap = archiveRef.get(readSource()).await()
             if (!snap.exists()) throw IllegalStateException(MSG_ARCHIVE_GONE)
             val collection = snap.getString("originalCollection").orEmpty()
             val documentId = snap.getString("originalDocumentId").orEmpty()
@@ -128,7 +130,7 @@ class RecordArchiverImpl @Inject constructor(
                 restoreFields(s.user.uid, s.user.name, FieldValue.serverTimestamp())
             )
             batch.delete(archiveRef)
-            batch.commit().await()
+            batch.commit().awaitWrite("Archive change")
 
             audit.log("restore", collection, documentId, mapOf("isDeleted" to true), mapOf("isDeleted" to false))
             Result.success(Unit)
@@ -144,7 +146,7 @@ class RecordArchiverImpl @Inject constructor(
             val s = signedIn()
             requireSuperAdmin(s)
             val archiveRef = firestore.doc("deleted_records", deletedRecordId)
-            val snap = archiveRef.get().await()
+            val snap = archiveRef.get(readSource()).await()
             if (!snap.exists()) throw IllegalStateException(MSG_ARCHIVE_GONE)
             val collection = snap.getString("originalCollection").orEmpty()
             val documentId = snap.getString("originalDocumentId").orEmpty()
@@ -153,7 +155,7 @@ class RecordArchiverImpl @Inject constructor(
             val batch = db.batch()
             batch.delete(firestore.doc(collection, documentId))
             batch.delete(archiveRef)
-            batch.commit().await()
+            batch.commit().awaitWrite("Archive change")
 
             audit.log("permanent_purge", collection, documentId, mapOf("isDeleted" to true), mapOf("purgedBy" to s.user.name))
             Result.success(Unit)

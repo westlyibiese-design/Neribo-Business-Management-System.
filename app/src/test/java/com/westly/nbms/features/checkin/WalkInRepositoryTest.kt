@@ -81,13 +81,12 @@ class WalkInRepositoryTest {
         assertEquals(listOf("New Walk-In"), notifier.calls.map { it.title })
     }
 
-    @Test fun offlineStopsBeforeAnythingElse() = runTest {
+    @Test fun offlineWalkInIsStillSavedOnThePhone() = runTest {
+        // Walk-ins work offline now: the store queues the writes and they upload when the internet returns.
         connectivity.online = false
-        val r = submit() as WalkInResult.Rejected
-        assertEquals("You're Offline", r.title)
-        assertEquals("No internet connection detected. Please reconnect and try again.", r.message)
-        assertTrue(roomLogic.conflictChecks.isEmpty())
-        assertTrue(store.commits.isEmpty())
+        val r = submit()
+        assertTrue(r is WalkInResult.Done)
+        assertEquals(1, store.commits.size)
     }
 
     @Test fun aRoomThatIsNotAvailableIsRefused() = runTest {

@@ -90,7 +90,7 @@ class FirestoreLostFoundStore(private val firestore: BusinessFirestore) : LostFo
     override suspend fun create(payload: Map<String, Any?>): String {
         val id = firestore.collection(LOST_FOUND_COLLECTION).document().id
         val resolved = resolveLostFoundMap(payload)
-        firestore.runTransaction { tx, fs ->
+        firestore.runTx { tx, fs ->
             tx.set(fs.doc(LOST_FOUND_COLLECTION, id), resolved)
             Unit
         }

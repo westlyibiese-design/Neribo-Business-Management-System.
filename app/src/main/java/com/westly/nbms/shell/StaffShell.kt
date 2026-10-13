@@ -1,5 +1,6 @@
 package com.westly.nbms.shell
 
+import com.westly.nbms.core.sync.SyncBanner
 import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -243,6 +244,7 @@ private fun ShellMain(
             showMenuButton = showMenuButton,
             onMenuClick = onMenuClick
         )
+        SyncBanner()
         MaintenanceGate(
             session = session,
             modifier = Modifier

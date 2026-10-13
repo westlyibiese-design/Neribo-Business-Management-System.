@@ -71,7 +71,7 @@ class FirestoreLaundryStore(private val firestore: BusinessFirestore) : LaundryS
 
     override suspend fun create(payload: Map<String, Any?>): String {
         val id = firestore.collection(LAUNDRY_COLLECTION).document().id
-        firestore.runTransaction { tx, fs ->
+        firestore.runTx { tx, fs ->
             tx.set(fs.doc(LAUNDRY_COLLECTION, id), payload.resolveLaundryServerTime())
             Unit
         }

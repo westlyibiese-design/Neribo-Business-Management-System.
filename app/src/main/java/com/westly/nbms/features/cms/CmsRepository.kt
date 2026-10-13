@@ -1,5 +1,6 @@
 package com.westly.nbms.features.cms
 
+import com.westly.nbms.core.sync.awaitWrite
 import android.util.Log
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.SetOptions
@@ -145,11 +146,11 @@ class FirestoreCmsStore(private val firestore: BusinessFirestore) : CmsStore {
     override suspend fun setMerged(docId: String, payload: Map<String, Any?>, mergeFields: List<String>) {
         firestore.doc(CMS_COLLECTION, docId)
             .set(payload.resolveCmsServerTime(), SetOptions.mergeFields(mergeFields))
-            .await()
+            .awaitWrite("Website content change")
     }
 
     override suspend fun <R> inTransaction(docId: String, block: (CmsTx) -> R): R =
-        firestore.runTransaction { tx, fs ->
+        firestore.runTx { tx, fs ->
             val ref = fs.doc(CMS_COLLECTION, docId)
             val real = object : CmsTx {
                 override fun read(): CmsRawDoc {

@@ -5,6 +5,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.westly.nbms.BuildConfig
+import com.westly.nbms.core.data.NetworkState
 import com.westly.nbms.core.rbac.Rbac
 import com.westly.nbms.core.rbac.Role
 import io.github.jan.supabase.SupabaseClient
@@ -78,6 +79,36 @@ private data class BusinessRow(
 @Serializable
 private data class RoleRow(val role: String)
 
+/**
+ * A copy of "who is signed in" kept (encrypted) on the phone after every successful sign-in, so a phone that starts
+ * with no internet can open the app for the person who was already signed in. It is replaced by the real data
+ * the moment the internet is back, and removed on sign-out.
+ */
+@Serializable
+private data class CachedSession(
+    val uid: String,
+    val businessId: String,
+    val role: String,
+    val name: String,
+    val email: String? = null,
+    val phone: String? = null,
+    val status: String = "active",
+    val usesPin: Boolean = false,
+    val businessName: String,
+    val businessCode: String,
+    val enabledRoles: List<String> = emptyList(),
+    val currency: String = "NGN",
+    val currencySymbol: String = "₦",
+    val timezone: String = "Africa/Lagos",
+    val businessType: String = "hotel",
+    val maintenanceMode: Boolean = false,
+    val maintenanceMessage: String? = null
+)
+
+private const val KEY_OFFLINE_SESSION = "offline_session"
+/** After the internet returns, wait this long for the connection to settle before checking the account again. */
+private const val RECONNECT_SETTLE_MS = 1_500L
+
 private sealed interface TokenResult {
     data class Ok(val token: String) : TokenResult
     data object Suspended : TokenResult
@@ -123,10 +154,26 @@ class SessionManagerImpl @Inject constructor(
     private var tokenRefreshJob: Job? = null
     private var lastFailure: String? = null
 
+    /** True while the app is open from the saved copy because the server could not be reached. */
+    @Volatile
+    private var offlineRestored = false
+
     init {
         if (notConnected) {
             _state.value = SessionState.SignedOut
         } else {
+            // No internet at start-up: open straight from the saved sign-in instead of waiting for time-outs.
+            if (!NetworkState.isOnline && store.getString(SecureStore.KEY_SUPABASE_SESSION) != null) {
+                restoreFromCache(null)
+            }
+            scope.launch {
+                NetworkState.online.collect { online ->
+                    if (online && offlineRestored) {
+                        delay(RECONNECT_SETTLE_MS)
+                        if (offlineRestored) bootstrap(force = true)
+                    }
+                }
+            }
             scope.launch { watchSupabaseSession() }
             scope.launch {
                 delay(STARTUP_WATCHDOG_MS)
@@ -176,6 +223,58 @@ class SessionManagerImpl @Inject constructor(
         if (!done) throw FirebaseNetworkException("Timed out signing in to the live data service.")
     }
 
+    // ---------------------------------------------------------------- offline copy of the sign-in
+
+    private fun saveCache(s: SessionState.SignedIn) {
+        try {
+            val c = CachedSession(
+                uid = s.user.uid, businessId = s.user.businessId, role = s.user.role.key, name = s.user.name,
+                email = s.user.email, phone = s.user.phone, status = s.user.status, usesPin = s.user.usesPin,
+                businessName = s.business.name, businessCode = s.business.code,
+                enabledRoles = s.business.enabledRoles.map { it.key },
+                currency = s.business.currency, currencySymbol = s.business.currencySymbol,
+                timezone = s.business.timezone, businessType = s.business.businessType,
+                maintenanceMode = s.business.maintenanceMode, maintenanceMessage = s.business.maintenanceMessage
+            )
+            store.putString(KEY_OFFLINE_SESSION, json.encodeToString(CachedSession.serializer(), c))
+        } catch (_: Exception) { }
+    }
+
+    /**
+     * Opens the app from the saved copy. Only used when the server cannot be reached and the saved copy belongs to the
+     * same account ([expectedUid]; null at start-up, before the Supabase session has loaded). Returns true when it did.
+     */
+    private fun restoreFromCache(expectedUid: String?): Boolean {
+        val current = _state.value
+        if (current is SessionState.SignedIn && (expectedUid == null || current.user.uid == expectedUid)) {
+            offlineRestored = true
+            return true
+        }
+        val raw = store.getString(KEY_OFFLINE_SESSION) ?: return false
+        val c = try { json.decodeFromString(CachedSession.serializer(), raw) } catch (e: Exception) { return false }
+        if (expectedUid != null && c.uid != expectedUid) return false
+        val role = Role.fromKey(c.role) ?: return false
+        if (c.status != "active") return false
+        val enabled = c.enabledRoles.mapNotNull { Role.fromKey(it) }.toSet()
+        val signedIn = SessionState.SignedIn(
+            user = SessionUser(
+                uid = c.uid, businessId = c.businessId, role = role, name = c.name, email = c.email,
+                phone = c.phone, status = c.status, usesPin = c.usesPin
+            ),
+            business = Business(
+                id = c.businessId, name = c.businessName, code = c.businessCode, enabledRoles = enabled,
+                currency = c.currency, currencySymbol = c.currencySymbol, timezone = c.timezone,
+                businessType = c.businessType, maintenanceMode = c.maintenanceMode,
+                maintenanceMessage = c.maintenanceMessage
+            ),
+            modules = Rbac.enabledModules(enabled)
+        )
+        offlineRestored = true
+        _state.value = signedIn
+        startLive(signedIn)
+        return true
+    }
+
     // ---------------------------------------------------------------- public API
 
     override suspend fun signInWithPassword(email: String, password: String): Result<Unit> {
@@ -209,6 +308,7 @@ class SessionManagerImpl @Inject constructor(
         try { supabase.auth.signOut() } catch (e: CancellationException) { throw e } catch (_: Exception) { }
         try { firebaseAuth.signOut() } catch (_: Exception) { }
         store.clearExcept(SecureStore.KEY_LAST_BUSINESS_CODE)
+        offlineRestored = false
         _state.value = SessionState.SignedOut
     }
 
@@ -274,6 +374,7 @@ class SessionManagerImpl @Inject constructor(
                 return@withLock lastFailure
             }
             is TokenResult.Network -> {
+                if (restoreFromCache(uid)) return@withLock null
                 goNoAccess(MSG_NETWORK_NO_ACCESS)
                 lastFailure = MSG_NETWORK_NO_ACCESS
                 return@withLock lastFailure
@@ -289,6 +390,7 @@ class SessionManagerImpl @Inject constructor(
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: FirebaseNetworkException) {
+                    if (restoreFromCache(uid)) return@withLock null
                     goNoAccess(MSG_NETWORK_NO_ACCESS)
                     lastFailure = MSG_NETWORK_NO_ACCESS
                     return@withLock lastFailure
@@ -376,12 +478,15 @@ class SessionManagerImpl @Inject constructor(
                 modules = Rbac.enabledModules(enabledRoles)
             )
             if (business.code.isNotBlank()) store.putString(SecureStore.KEY_LAST_BUSINESS_CODE, business.code)
+            saveCache(signedIn)
+            offlineRestored = false
             _state.value = signedIn
             startLive(signedIn)
             null
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            if (restoreFromCache(uid)) return@withLock null
             goNoAccess(MSG_NETWORK_NO_ACCESS)
             lastFailure = MSG_NETWORK_NO_ACCESS
             lastFailure
@@ -399,6 +504,7 @@ class SessionManagerImpl @Inject constructor(
         try { supabase.auth.signOut() } catch (e: CancellationException) { throw e } catch (_: Exception) { }
         try { firebaseAuth.signOut() } catch (_: Exception) { }
         store.clearExcept(SecureStore.KEY_LAST_BUSINESS_CODE)
+        offlineRestored = false
         _state.value = SessionState.SignedOut
     }
 

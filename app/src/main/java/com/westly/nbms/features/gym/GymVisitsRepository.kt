@@ -176,7 +176,7 @@ class FirestoreGymVisitsStore @Inject constructor(
 
     override suspend fun <R> inTransaction(block: (GymTx) -> R): R {
         try {
-            return firestore.runTransaction { tx, fs ->
+            return firestore.runTx { tx, fs ->
                 val real = object : GymTx {
                     override fun readMember(memberId: String): LiveGymMember? {
                         val snap = tx.get(fs.doc(GYM_MEMBERS, memberId))

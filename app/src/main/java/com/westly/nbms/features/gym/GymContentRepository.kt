@@ -63,7 +63,7 @@ class FirestoreGymContentStore(
 
     override suspend fun <R> inTransaction(block: (GymContentTx) -> R): R {
         try {
-            return firestore.runTransaction { tx, fs ->
+            return firestore.runTx { tx, fs ->
                 val ref = fs.doc(GYM_CMS_COLLECTION, GYM_CMS_DOC_ID)
                 val real = object : GymContentTx {
                     override fun readDocument(): Map<String, Any?>? {

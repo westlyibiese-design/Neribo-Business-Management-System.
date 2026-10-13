@@ -1,5 +1,6 @@
 package com.westly.nbms.core.notify
 
+import com.westly.nbms.core.data.NetworkState
 import android.util.Log
 import com.google.firebase.firestore.FieldValue
 import com.westly.nbms.core.data.BusinessFirestore
@@ -101,7 +102,9 @@ class NotifierImpl @Inject constructor(
             val signedIn = session.state.value as? SessionState.SignedIn ?: return
             val uid = signedIn.user.uid
             val fields = notificationFields(type, title, message, severity, link, forRoles, forUserIds, excludeActor, uid)
-            val id = firestore.add("notifications", fields + ("createdAt" to FieldValue.serverTimestamp()))
+            // The id is made on the phone, so this works offline: the notification is saved here and uploads later.
+            val id = firestore.collection("notifications").document().id
+            firestore.set("notifications", id, fields + ("createdAt" to FieldValue.serverTimestamp()))
             sendPush(
                 pushRequestBody(
                     forRoles = forRoles,
@@ -120,16 +123,24 @@ class NotifierImpl @Inject constructor(
         }
     }
 
-    /** Fire-and-forget: never blocks the caller and never throws. */
+    /**
+     * Fire-and-forget: never blocks the caller and never throws. With internet it is sent now; with none (or if the
+     * send fails) it goes into the [PushOutbox] and is sent when the internet returns.
+     */
     private fun sendPush(body: JsonObject) {
         pushScope.launch {
-            try {
-                supabase.functions.invoke(function = "send-push", body = body)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.w(TAG, "Push request failed: ${e.javaClass.simpleName}")
+            if (NetworkState.isOnline) {
+                try {
+                    supabase.functions.invoke(function = "send-push", body = body)
+                    return@launch
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.w(TAG, "Push request failed, queued for later: ${e.javaClass.simpleName}")
+                }
             }
+            val id = (body["notificationId"] as? JsonPrimitive)?.content.orEmpty()
+            PushOutbox.enqueue(id.ifBlank { "push-${System.currentTimeMillis()}" }, body)
         }
     }
 }

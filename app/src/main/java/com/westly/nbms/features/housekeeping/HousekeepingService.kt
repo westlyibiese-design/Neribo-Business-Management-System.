@@ -1,5 +1,7 @@
 package com.westly.nbms.features.housekeeping
 
+import com.westly.nbms.core.data.readSource
+import com.westly.nbms.core.sync.awaitWrite
 import android.util.Log
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FieldValue
@@ -141,16 +143,18 @@ internal class FirestoreHousekeepingStore(private val firestore: BusinessFiresto
     override fun newId(collection: String): String = firestore.collection(collection).document().id
 
     override suspend fun getDoc(collection: String, id: String): Map<String, Any?>? {
-        val snapshot = firestore.doc(collection, id).get().await()
+        val snapshot = firestore.doc(collection, id).get(readSource()).await()
         return if (snapshot.exists()) (snapshot.data ?: emptyMap()) else null
     }
 
     override suspend fun addDoc(collection: String, data: Map<String, Any?>): String = withWriteTimeout {
-        firestore.collection(collection).add(toFirestoreMap(data)).await().id
+        val ref = firestore.collection(collection).document()
+        ref.set(toFirestoreMap(data)).awaitWrite("Housekeeping change")
+        ref.id
     }
 
     override suspend fun updateDoc(collection: String, id: String, fields: Map<String, Any?>) {
-        withWriteTimeout { firestore.doc(collection, id).update(toFirestoreMap(fields)).await() }
+        withWriteTimeout { firestore.doc(collection, id).update(toFirestoreMap(fields)).awaitWrite("Housekeeping change") }
     }
 
     override suspend fun commit(writes: List<HkWrite>) {
@@ -163,14 +167,14 @@ internal class FirestoreHousekeepingStore(private val firestore: BusinessFiresto
                 is HkWrite.Remove -> batch.delete(firestore.doc(write.collection, write.id))
             }
         }
-        withWriteTimeout { batch.commit().await() }
+        withWriteTimeout { batch.commit().awaitWrite("Housekeeping change") }
     }
 
     override suspend fun activeMirrorRoomIds(housekeeperId: String): List<String> {
         val query: Query = firestore.collection(MIRRORS)
             .whereEqualTo("housekeeperId", housekeeperId)
             .whereEqualTo("status", "active")
-        return query.get().await().documents.map { it.id }
+        return query.get(readSource()).await().documents.map { it.id }
     }
 }
 

@@ -111,7 +111,7 @@ class FirestoreWalkInStore @Inject constructor(
 
     override suspend fun commit(writes: WalkInWrites) {
         try {
-            firestore.runTransaction { tx, fs ->
+            firestore.runTx { tx, fs ->
                 // All reads first, then the writes.
                 val roomRef = fs.doc("rooms", writes.roomId)
                 val roomSnap = tx.get(roomRef)
@@ -171,7 +171,6 @@ class WalkInRepository @Inject constructor(
         officialCheckOutTime: String,
         onConnectionLost: () -> Unit = {}
     ): WalkInResult {
-        if (!connectivity.isOnline()) return WalkInResult.Rejected(TITLE_OFFLINE, MSG_OFFLINE)
         if (!isAvailable(room)) {
             return WalkInResult.Rejected(TITLE_ROOM_NOT_AVAILABLE, roomNotAvailableMessage(room.number, room.status))
         }

@@ -268,7 +268,7 @@ class FirestoreGymMembersStore @Inject constructor(
 
     override suspend fun renew(memberId: String, plan: (LiveMembership) -> RenewWrite): RenewResult {
         try {
-            return firestore.runTransaction { tx, fs ->
+            return firestore.runTx { tx, fs ->
                 val ref = fs.doc(GYM_MEMBERS, memberId)
                 val snap = tx.get(ref)
                 if (!snap.exists() || snap.getBoolean("isDeleted") == true) throw GymException(MSG_MEMBER_NOT_FOUND)

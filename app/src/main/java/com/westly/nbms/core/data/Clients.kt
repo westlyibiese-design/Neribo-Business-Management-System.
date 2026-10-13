@@ -76,7 +76,12 @@ object ClientsModule {
         val firestore = FirebaseFirestore.getInstance()
         try {
             firestore.firestoreSettings = FirebaseFirestoreSettings.Builder()
-                .setLocalCacheSettings(PersistentCacheSettings.newBuilder().build())
+                // Keep every record saved on the phone (no automatic clean-up), so the app keeps working offline.
+                .setLocalCacheSettings(
+                    PersistentCacheSettings.newBuilder()
+                        .setSizeBytes(FirebaseFirestoreSettings.CACHE_SIZE_UNLIMITED)
+                        .build()
+                )
                 .build()
         } catch (e: IllegalStateException) {
             // Settings were already applied earlier in this process. Safe to ignore.

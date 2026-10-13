@@ -196,7 +196,7 @@ class FirestoreExtendStayStore @Inject constructor(
 
     override suspend fun commit(bookingDocId: String, build: (LiveStay) -> ExtendWrites): ExtendWrites {
         try {
-            return firestore.runTransaction { tx, fs ->
+            return firestore.runTx { tx, fs ->
                 // All reads first (booking, then its room), then the writes.
                 val bookingRef = fs.doc("bookings", bookingDocId)
                 val bookingSnap = tx.get(bookingRef)
@@ -272,7 +272,6 @@ class ExtendStayRepository @Inject constructor(
      */
     suspend fun extend(booking: Booking, request: ExtendRequest): ExtendResult {
         if (!mayExtend(request.role)) return ExtendResult.Rejected(TITLE_NOT_AUTHORIZED, MSG_NOT_AUTHORIZED)
-        if (!network.isOnline()) return ExtendResult.Rejected(TITLE_OFFLINE, MSG_OFFLINE)
         if (request.extraNights < 1) return ExtendResult.Rejected(TITLE_INVALID_EXTENSION, MSG_INVALID_EXTENSION)
         val currentCheckOut = booking.checkOut.asInstant()
             ?: return ExtendResult.Rejected(TITLE_EXTEND_FAILED, MSG_NO_CHECK_OUT)

@@ -1,5 +1,6 @@
 package com.westly.nbms.features.notifications
 
+import com.westly.nbms.core.sync.awaitWrite
 import android.util.Log
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.Query
@@ -149,7 +150,7 @@ class NotificationsRepository @Inject constructor(
             val col = firestore.collection("notifications")
             val batch = col.firestore.batch()
             chunk.forEach { batch.update(col.document(it.id), "readBy", FieldValue.arrayUnion(uid)) }
-            batch.commit().await()
+            batch.commit().awaitWrite("Notifications marked as read")
         }
     }
 

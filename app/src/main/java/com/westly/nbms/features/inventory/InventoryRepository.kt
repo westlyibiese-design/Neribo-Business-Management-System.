@@ -151,13 +151,13 @@ class FirestoreInventoryStore @Inject constructor(
 
     override suspend fun restock(itemId: String, amount: Int): RestockResult {
         try {
-            return firestore.runTransaction { tx, fs ->
+            return firestore.runTx { tx, fs ->
                 val ref = fs.doc("inventory", itemId)
                 val snap = tx.get(ref)
                 if (!snap.exists() || snap.getBoolean("isDeleted") == true) throw InventoryException(MSG_ITEM_MISSING)
                 val before = snap.getLong("quantity")?.toInt() ?: 0
                 val after = restockedQuantity(before, amount)
-                tx.update(ref, buildRestockFields(after).resolveServerTime())
+                tx.update(ref, buildRestockFields(after).resolveServerTime() + ("quantity" to FieldValue.increment((after - before).toLong())))
                 RestockResult(before, after)
             }
         } catch (e: Exception) {

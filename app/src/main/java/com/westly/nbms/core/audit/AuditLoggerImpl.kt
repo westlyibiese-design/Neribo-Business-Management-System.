@@ -1,5 +1,6 @@
 package com.westly.nbms.core.audit
 
+import com.westly.nbms.core.sync.awaitWrite
 import android.os.Build
 import android.util.Log
 import com.google.firebase.firestore.FieldValue
@@ -64,7 +65,7 @@ class AuditLoggerImpl @Inject constructor(
                 "timestamp" to FieldValue.serverTimestamp(),
                 "isDeleted" to false
             )
-            firestore.collection("audit_logs").add(entry).await()
+            firestore.collection("audit_logs").document().set(entry).awaitWrite("Activity log entry")
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

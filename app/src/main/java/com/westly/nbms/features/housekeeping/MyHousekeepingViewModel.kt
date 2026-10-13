@@ -1,5 +1,6 @@
 package com.westly.nbms.features.housekeeping
 
+import com.westly.nbms.core.data.readSource
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.firestore.DocumentSnapshot
@@ -269,7 +270,7 @@ internal class FirestoreMyHousekeepingSource(private val firestore: BusinessFire
             .whereEqualTo("status", TaskStatus.COMPLETED.key)
             .orderBy("completedAt", Query.Direction.DESCENDING)
             .limit(limit.toLong())
-            .get()
+            .get(readSource())
             .await()
             .documents
             .map { doc: DocumentSnapshot ->

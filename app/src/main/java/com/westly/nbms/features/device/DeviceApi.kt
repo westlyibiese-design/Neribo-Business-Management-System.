@@ -1,5 +1,11 @@
 package com.westly.nbms.features.device
 
+import javax.crypto.spec.PBEKeySpec
+import javax.crypto.SecretKeyFactory
+import java.security.SecureRandom
+import java.security.MessageDigest
+import com.westly.nbms.core.session.SecureStore
+import android.util.Base64
 import android.os.Build
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.exceptions.RestException
@@ -52,6 +58,9 @@ fun deviceLabel(): String {
 
 internal const val MSG_DEVICE_NETWORK = "Can't reach the server. Check your connection and try again."
 internal const val MSG_DEVICE_GENERIC = "Something went wrong. Please try again."
+private const val MAX_OFFLINE_PIN_FAILS = 5
+private const val MSG_OFFLINE_PIN_LIMIT =
+    "Too many wrong PINs while offline. Connect to the internet to unlock, or log out and sign in again."
 
 private val deviceJson = Json { ignoreUnknownKeys = true }
 private val deviceErrorPattern = Regex("\"error\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"")
@@ -92,14 +101,15 @@ private fun parseInstant(s: String?): Instant? =
 /** Calls the four Device Lock Edge Functions through the signed-in Supabase client (it attaches the user's token). */
 @Singleton
 class DeviceApiImpl @Inject constructor(
-    private val supabase: SupabaseClient
+    private val supabase: SupabaseClient,
+    private val store: SecureStore
 ) : DeviceApi {
 
     override suspend fun list(): Result<List<DeviceInfo>> =
         call("device-list", buildJsonObject { }).mapCatching { parseDeviceList(it) }
 
-    override suspend fun setPin(deviceId: String, deviceLabel: String, pin: String): Result<Unit> =
-        call(
+    override suspend fun setPin(deviceId: String, deviceLabel: String, pin: String): Result<Unit> {
+        val result = call(
             "device-pin-set",
             buildJsonObject {
                 put("deviceId", deviceId)
@@ -107,15 +117,70 @@ class DeviceApiImpl @Inject constructor(
                 put("pin", pin)
             }
         ).map { }
+        if (result.isSuccess) rememberPin(deviceId, pin)
+        return result
+    }
 
-    override suspend fun verifyPin(deviceId: String, pin: String): Result<Unit> =
-        call(
+    override suspend fun verifyPin(deviceId: String, pin: String): Result<Unit> {
+        val result = call(
             "device-pin-verify",
             buildJsonObject {
                 put("deviceId", deviceId)
                 put("pin", pin)
             }
         ).map { }
+        if (result.isSuccess) {
+            rememberPin(deviceId, pin)
+            return result
+        }
+        // Status 0 = the server could not be reached. Then the PIN is checked against the copy kept on this phone.
+        val failure = result.exceptionOrNull() as? DeviceApiException
+        if (failure != null && failure.status == 0) return verifyOffline(deviceId, pin) ?: result
+        return result
+    }
+
+    // ---- Offline unlock: a salted hash of the PIN, kept encrypted on this phone after each successful PIN check ----
+
+    private fun pinKey(deviceId: String) = "offline_pin_$deviceId"
+    private fun failKey(deviceId: String) = "offline_pin_fails_$deviceId"
+
+    private fun rememberPin(deviceId: String, pin: String) {
+        try {
+            val salt = ByteArray(16).also { SecureRandom().nextBytes(it) }
+            val hash = hashPin(pin, salt)
+            store.putString(pinKey(deviceId), Base64.encodeToString(salt, Base64.NO_WRAP) + ":" + Base64.encodeToString(hash, Base64.NO_WRAP))
+            store.remove(failKey(deviceId))
+        } catch (_: Exception) { }
+    }
+
+    /** Null when this phone has no saved copy (the caller then shows the "can't reach the server" message). */
+    private fun verifyOffline(deviceId: String, pin: String): Result<Unit>? {
+        val saved = store.getString(pinKey(deviceId)) ?: return null
+        val fails = store.getString(failKey(deviceId))?.toIntOrNull() ?: 0
+        if (fails >= MAX_OFFLINE_PIN_FAILS) return Result.failure(DeviceApiException(MSG_OFFLINE_PIN_LIMIT, 401))
+        val parts = saved.split(":")
+        val ok = try {
+            val salt = Base64.decode(parts[0], Base64.NO_WRAP)
+            val expected = Base64.decode(parts[1], Base64.NO_WRAP)
+            MessageDigest.isEqual(expected, hashPin(pin, salt))
+        } catch (e: Exception) {
+            return null
+        }
+        if (ok) {
+            store.remove(failKey(deviceId))
+            return Result.success(Unit)
+        }
+        store.putString(failKey(deviceId), (fails + 1).toString())
+        val left = MAX_OFFLINE_PIN_FAILS - fails - 1
+        return Result.failure(
+            DeviceApiException(if (left > 0) "Incorrect PIN. $left tries left while offline." else MSG_OFFLINE_PIN_LIMIT, 401)
+        )
+    }
+
+    private fun hashPin(pin: String, salt: ByteArray): ByteArray {
+        val spec = PBEKeySpec(pin.toCharArray(), salt, 60_000, 256)
+        return SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded
+    }
 
     override suspend fun revoke(registrationId: String): Result<Unit> =
         call("device-revoke", buildJsonObject { put("registrationId", registrationId) }).map { }
